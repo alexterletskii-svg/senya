@@ -1,0 +1,24 @@
+<!DOCTYPE html>
+<html lang="ru">
+<head>
+  <meta charset="utf-8">
+  <meta http-equiv="Content-Security-Policy" content="default-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' data:">
+  <title>Робик</title>
+  <link rel="stylesheet" href="style.css">
+</head>
+<body>
+  <div id="app">
+    <div id="eyes-stage" hidden>
+      <div id="eyes-dot"></div>
+      <div id="eyes-info"><span id="eyes-text"></span> <b id="eyes-left"></b> <button id="eyes-cancel">Отмена</button></div>
+    </div>
+
+    <div id="bubbles"></div>
+    <div id="panel" hidden></div>
+
+    <div id="robot-wrap" title="Клик — меню, перетащи — переместить"></div>
+  </div>
+  <script src="robot.js"></script>
+  <script src="app.js"></script>
+</body>
+</html>
