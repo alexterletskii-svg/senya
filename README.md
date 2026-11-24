@@ -65,7 +65,7 @@ setx DEEPSEEK_API_KEY "ваш_ключ"
 
 ### Ключ внутри сборки
 
-При `npm run dist:win` скрипт `scripts/embed-key.js` кладёт ключ из `DEEPSEEK_API_KEY` в `src/main/embedded.json` (файл в `.gitignore`, в репозиторий не попадает). В GitHub Actions ключ берётся из секрета репозитория `DEEPSEEK_API_KEY`. Переменная окружения на компьютере главнее встроенного ключа.
+Скопируй `.env.example` в `.env` и впиши `DEEPSEEK_API_KEY=...` (файл в `.gitignore`, в репозиторий не попадает). При `npm run dist:win` скрипт `scripts/embed-key.js` кладёт ключ в `src/main/embedded.json` (тоже вне git), и он попадает в `.exe`. В GitHub Actions ключ берётся из секрета репозитория `DEEPSEEK_API_KEY`. Переменная окружения на компьютере главнее встроенного ключа.
 
 ## Настройки
 
