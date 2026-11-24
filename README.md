@@ -65,6 +65,8 @@ setx DEEPSEEK_API_KEY "ваш_ключ"
 
 ### Ключ внутри сборки
 
+Положи ключ в файл `.env` в корне проекта (образец — `.env.example`, сам `.env` в `.gitignore`). При `npm start` Сеня читает его напрямую.
+
 При `npm run dist:win` скрипт `scripts/embed-key.js` кладёт ключ из `DEEPSEEK_API_KEY` в `src/main/embedded.json` (файл в `.gitignore`, в репозиторий не попадает). В GitHub Actions ключ берётся из секрета репозитория `DEEPSEEK_API_KEY`. Переменная окружения на компьютере главнее встроенного ключа.
 
 ## Настройки
