@@ -4,6 +4,7 @@ const EventEmitter = require('node:events');
 const { pick } = require('./phrases');
 const { parseTask, nextDue, repeatLabel } = require('./taskParser');
 const { getExercise, pickExercise } = require('./exercises');
+const { sanitize, MOODS } = require('./blocks');
 
 const DEFAULT_SETTINGS = {
   breakEveryMin: 30,
@@ -25,7 +26,10 @@ const DEFAULT_SETTINGS = {
   volume: 60,
   autoDnd: true,
   openAtLogin: false,
+  panelAutoCloseSec: 4,
 };
+
+const MIN_SETTING = { panelAutoCloseSec: 0 };
 
 const EYES_SECONDS = 20;
 const HAPPY_MS = 5000;
@@ -72,6 +76,9 @@ class Engine extends EventEmitter {
     this._sleeping = false;
     this._happyUntil = 0;
     this._loveUntil = 0;
+    this._forcedMood = '';
+    this._forcedUntil = 0;
+    this.program = sanitize(saved.program);
     this._awakeUntil = 0;
     this._reminderSeq = 1;
     this._activeAcc = 0;
@@ -102,7 +109,7 @@ class Engine extends EventEmitter {
       if (typeof def === 'boolean') next[k] = Boolean(v);
       else {
         const n = Number(v);
-        if (Number.isFinite(n) && n >= 1 && n <= 600) next[k] = Math.round(n);
+        if (Number.isFinite(n) && n >= (MIN_SETTING[k] ?? 1) && n <= 600) next[k] = Math.round(n);
       }
     }
     this.settings = next;
@@ -206,6 +213,7 @@ class Engine extends EventEmitter {
 
   _fire(kind) {
     if (kind === 'break') {
+      this.emit('event', 'break');
       if (this._breakPending) this.missedBreaks += 1;
       this._breakPending = true;
       const text = this.missedBreaks >= MISSED_FOR_SAD ? pick('sad', this._rng) : pick('break', this._rng);
@@ -368,6 +376,7 @@ class Engine extends EventEmitter {
 
   startPomodoro() {
     this.pomo = { phase: 'work', running: true, remainingSec: this.settings.workMin * 60, cycle: this.pomo.cycle };
+    this.emit('event', 'pomoStart');
     this._announcePhase('work');
     this._emitState();
   }
@@ -412,6 +421,7 @@ class Engine extends EventEmitter {
       this.pomo.phase = long ? 'longBreak' : 'break';
       this.pomo.remainingSec = (long ? s.longBreakMin : s.shortBreakMin) * 60;
       this._restTaken(true);
+      this.emit('event', 'pomoEnd');
     } else {
       this.pomo.phase = 'work';
       this.pomo.remainingSec = s.workMin * 60;
@@ -461,6 +471,7 @@ class Engine extends EventEmitter {
       t.doneAt = now;
     }
     this.emit('tasks-changed');
+    this.emit('event', 'taskDone');
     this.emit('celebrate', { text: pick('happy', this._rng) });
     this._emitState();
   }
@@ -518,15 +529,39 @@ class Engine extends EventEmitter {
   }
 
   pet() {
+    this.emit('event', 'pet');
     this._startLove();
     this._emitState();
   }
 
   poke() {
+    this.emit('event', 'click');
     if (this.getMood() !== 'sleeping') return;
     this._awakeUntil = this._now() + AWAKE_ON_TOUCH_MS;
     this._say(this._mk('poke', pick('poke', this._rng), []), true);
     this._emitState();
+  }
+
+  sayCustom(text) {
+    const t = String(text || '').slice(0, 120);
+    if (!t) return;
+    this._say(this._mk('custom', t, []));
+  }
+
+  setEmotion(mood, ms = 6000) {
+    if (!(mood in MOODS)) return;
+    this._forcedMood = mood;
+    this._forcedUntil = this._now() + ms;
+    this._emitState();
+  }
+
+  playSound(name) {
+    this.emit('sound', String(name));
+  }
+
+  setProgram(program) {
+    this.program = sanitize(program);
+    this.emit('program-changed', this.program);
   }
 
   chat() {
@@ -538,6 +573,7 @@ class Engine extends EventEmitter {
   getMood() {
     const now = this._now();
     if (this._sleeping && now >= this._awakeUntil) return 'sleeping';
+    if (now < this._forcedUntil) return this._forcedMood;
     if (now < this._loveUntil) return 'love';
     if (now < this._happyUntil) return 'happy';
     if (this.missedBreaks >= MISSED_FOR_SAD) return 'sad';
@@ -574,7 +610,7 @@ class Engine extends EventEmitter {
   }
 
   persistable() {
-    return { settings: this.settings, tasks: this.tasks, history: this.history };
+    return { settings: this.settings, tasks: this.tasks, history: this.history, program: this.program };
   }
 
   _emitState() {
@@ -587,6 +623,7 @@ class Engine extends EventEmitter {
       case 'pet': return this.pet();
       case 'poke': return this.poke();
       case 'chat': return this.chat();
+      case 'program:set': return this.setProgram(payload);
       case 'break:ack': return this.ackBreak();
       case 'break:snooze': return this.snoozeBreak();
       case 'eyes:start': return this.startEyes();

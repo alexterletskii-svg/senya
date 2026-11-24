@@ -238,6 +238,7 @@
       ]),
       el('details', {}, [el('summary', { text: 'Настройки' }), P.settings]),
       el('div', { class: 'row' }, [
+        el('button', { class: 'ghost', text: 'Конструктор', title: 'Собрать поведение Сени из блоков', onclick: () => api.act('editor:open') }),
         el('button', { class: 'ghost', text: 'Спрятать', title: 'Скрыть Сеню; вернуть — через иконку в трее или Ctrl+Alt+S', onclick: () => api.act('app:hide') }),
         el('button', { class: 'danger', text: 'Выход', onclick: () => api.act('app:quit') }),
       ]),
@@ -371,6 +372,7 @@
     ['longBreakMin', 'Pomodoro: длинный, мин'],
     ['idleSleepMin', 'Засыпать после простоя, мин'],
     ['volume', 'Громкость писков, %'],
+    ['panelAutoCloseSec', 'Закрывать меню через, сек (0 — не закрывать)'],
   ];
   const SETTING_TOGGLES = [
     ['breakEnabled', 'Напоминать о перерывах'],
@@ -385,7 +387,7 @@
   function renderSettings(cfg) {
     const nodes = [];
     for (const [key, label] of SETTING_FIELDS) {
-      const inp = el('input', { type: 'number', min: '1', max: key === 'volume' ? '100' : '600' });
+      const inp = el('input', { type: 'number', min: key === 'panelAutoCloseSec' ? '0' : '1', max: key === 'volume' ? '100' : '600' });
       inp.value = cfg[key];
       inp.addEventListener('change', () => api.act('settings:set', { [key]: inp.value }));
       nodes.push(el('span', { text: label }), inp);
@@ -399,10 +401,33 @@
     P.settings.replaceChildren(...nodes);
   }
 
+  let closeTimer = null;
+
+  function cancelAutoClose() {
+    clearTimeout(closeTimer);
+    closeTimer = null;
+  }
+
+  function scheduleAutoClose() {
+    cancelAutoClose();
+    const sec = state && state.settings ? state.settings.panelAutoCloseSec : 0;
+    if (panel.hidden || !sec) return;
+    closeTimer = setTimeout(() => {
+      closeTimer = null;
+      const typing = P.input.value.trim() || P.ask.value.trim();
+      if (!panel.hidden && !typing && !panel.matches(':hover')) togglePanel();
+    }, sec * 1000);
+  }
+
+  panel.addEventListener('mouseleave', scheduleAutoClose);
+  panel.addEventListener('mouseenter', cancelAutoClose);
+
   function togglePanel() {
+    cancelAutoClose();
     panel.hidden = !panel.hidden;
     if (!panel.hidden) {
       renderPanel(state);
+      scheduleAutoClose();
       setTimeout(() => P.input.focus(), 50);
     }
   }
@@ -533,6 +558,7 @@
   api.onState(onState);
   api.onCursor(onCursor);
   api.onExerciseStart(() => { closeBubble(); Sound.play('work'); });
+  api.onSound((name) => Sound.play(name));
   api.onOpenPanel(() => { if (panel.hidden) togglePanel(); else P.input.focus(); });
   api.onReminder((r) => pushBubble(r));
   api.onCelebrate((r) => pushBubble({ kind: 'happy', text: r.text, actions: [] }, { beepOn: false }));

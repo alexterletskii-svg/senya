@@ -376,3 +376,40 @@ test('приветствие: число дел и серия', () => {
   e.greet();
   assert.match(reminders[0].text, /В списке дел: 2/);
 });
+
+test('настройка автозакрытия меню: 0 разрешён, мусор отклоняется', () => {
+  const { e } = makeEngine();
+  assert.equal(e.settings.panelAutoCloseSec, 4);
+  e.updateSettings({ panelAutoCloseSec: 0 });
+  assert.equal(e.settings.panelAutoCloseSec, 0);
+  e.updateSettings({ panelAutoCloseSec: -3 });
+  assert.equal(e.settings.panelAutoCloseSec, 0);
+  e.updateSettings({ panelAutoCloseSec: 8 });
+  assert.equal(e.settings.panelAutoCloseSec, 8);
+});
+
+test('конструктор: события движка, своя эмоция, своя фраза, программа сохраняется', () => {
+  const { e, reminders, advance } = makeEngine();
+  const events = [];
+  e.on('event', (n) => events.push(n));
+  e.poke();
+  e.pet();
+  e.startPomodoro();
+  assert.deepEqual(events, ['click', 'pet', 'pomoStart']);
+
+  e.setEmotion('sad', 5000);
+  assert.equal(e.getMood(), 'sad');
+  e.setEmotion('nonsense', 5000);
+  assert.equal(e.getMood(), 'sad');
+  advance(6);
+  e.tick();
+  assert.notEqual(e.getMood(), 'sad');
+
+  const before = reminders.length;
+  e.sayCustom('Привет из блоков');
+  assert.equal(reminders.length, before + 1);
+  assert.equal(reminders[reminders.length - 1].kind, 'custom');
+
+  e.dispatch('program:set', { rules: [{ id: 'r', event: { type: 'click', params: {} }, body: [] }] });
+  assert.equal(e.persistable().program.rules.length, 1);
+});
