@@ -9,7 +9,8 @@
     "dist": "electron-builder",
     "dist:win": "electron-builder --win --publish never",
     "predist:win": "node scripts/embed-key.js",
-    "predist": "node scripts/embed-key.js"
+    "predist": "node scripts/embed-key.js",
+    "prestart": "node scripts/embed-key.js"
   },
   "license": "MIT",
   "devDependencies": {
