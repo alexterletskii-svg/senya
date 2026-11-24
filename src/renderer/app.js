@@ -20,7 +20,6 @@
   robotWrap.innerHTML = window.ROBOT_SVG;
   const robot = $('#robot');
 
-  // ---------- размер окна под содержимое ----------
   const appEl = $('#app');
   let lastSize = '';
   const reportLayout = () => {
@@ -32,7 +31,6 @@
   };
   new ResizeObserver(reportLayout).observe(appEl);
 
-  // ---------- настроение ----------
   const flags = { drag: false, land: false, talk: false };
   function refreshClass() {
     if (!state) return;
@@ -43,7 +41,6 @@
   }
   function applyMood() { refreshClass(); }
 
-  // ---------- взгляд: глаза следят за курсором, иногда осматриваются ----------
   const look = $('.look', robot);
   let cur = { x: 0, y: 0 };
   let tgt = { x: 0, y: 0 };
@@ -94,7 +91,6 @@
   }
   idleLoop();
 
-  // ---------- звук и «речь» ----------
   const ALERT_KINDS = ['break', 'eyes', 'water', 'posture', 'task', 'pomodoro', 'goal'];
   let talkTimer = 0;
 
@@ -121,7 +117,6 @@
     else if (prev === 'sleeping') Sound.play('wake');
   }
 
-  // ---------- облачка ----------
   const bubblesEl = $('#bubbles');
   const queue = [];
   let current = null;
@@ -163,7 +158,6 @@
   function pushBubble(r, { beepOn = true } = {}) {
     const same = (x) => x.kind === r.kind && x.taskId === r.taskId;
     if (current && same(current)) {
-      // обновляем текст текущего облачка вместо дубля
       clearTimeout(current.timer);
       current = { ...r };
       renderBubble();
@@ -177,9 +171,8 @@
     showNext();
   }
 
-  // ---------- панель ----------
   const panel = $('#panel');
-  const P = {}; // ссылки на живые элементы панели
+  const P = {};
   const DOWS = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
   const DND_REASON = { fullscreen: 'полный экран', presentation: 'презентация', call: 'звонок' };
 
@@ -417,8 +410,6 @@
     if (e.key === 'Escape' && !panel.hidden) togglePanel();
   });
 
-  // ---------- взаимодействие с роботом ----------
-  // клик — меню; ПКМ — поболтать; водить мышкой туда-сюда — погладить; зажать и тащить — поднять
   let press = null;
   robotWrap.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
@@ -463,7 +454,6 @@
     api.act('chat');
   });
 
-  // поглаживание: несколько быстрых смен направления над роботом без нажатия
   const stroke = { lastX: null, dir: 0, turns: [], cooldown: 0 };
   robotWrap.addEventListener('pointermove', (e) => {
     if (press) return;
@@ -486,7 +476,6 @@
     stroke.lastX = null; stroke.dir = 0; stroke.turns = [];
   });
 
-  // ---------- гимнастика для глаз ----------
   const stage = $('#eyes-stage');
   const dot = $('#eyes-dot');
   let eyesRaf = 0;
@@ -501,7 +490,7 @@
     const H = stage.clientHeight || 300;
     const step = (now) => {
       const t = (now - eyesT0) / 1000;
-      const w = (2 * Math.PI) / 7; // «восьмёрка» за 7 секунд
+      const w = (2 * Math.PI) / 7;
       dot.style.transform = `translate(${W / 2 + (W / 2 - 50) * Math.sin(w * t)}px, ${H / 2 - 12 + (H / 2 - 60) * Math.sin(2 * w * t)}px)`;
       eyesRaf = requestAnimationFrame(step);
     };
@@ -513,7 +502,6 @@
   }
   $('#eyes-cancel').addEventListener('click', () => api.act('eyes:cancel'));
 
-  // ---------- карточка разминки ----------
   const exCard = $('#exercise');
   function renderExercise(ex) {
     exCard.hidden = !ex.active;
@@ -525,7 +513,6 @@
   }
   $('#ex-cancel').addEventListener('click', () => api.act('exercise:cancel'));
 
-  // ---------- события из main ----------
   function onState(s) {
     const prevMood = state ? state.mood : null;
     state = s;

@@ -4,7 +4,6 @@ html, body { background: transparent; overflow: hidden; font-family: system-ui, 
 
 #app { position: fixed; right: 0; bottom: 0; display: inline-flex; flex-direction: column; align-items: flex-end; gap: 8px; padding: 8px; width: max-content; }
 
-/* ---------- робот ---------- */
 #robot-wrap { width: 160px; height: 170px; cursor: grab; touch-action: none; flex: none; }
 #robot-wrap:active { cursor: grabbing; }
 #robot { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 3px 5px rgba(20, 10, 60, .28)); }
@@ -21,7 +20,6 @@ html, body { background: transparent; overflow: hidden; font-family: system-ui, 
 #robot.hat .antenna { display: none; }
 #robot:hover .bulb { filter: brightness(1.4) drop-shadow(0 0 4px #ffb84d); }
 
-/* --- бодрый --- */
 #robot.mood-energetic .bot { animation: float 3.4s ease-in-out infinite; }
 #robot.mood-energetic .fin-l { animation: flap-l 1.3s ease-in-out infinite; }
 #robot.mood-energetic .fin-r { animation: flap-r 1.3s ease-in-out infinite; }
@@ -30,7 +28,6 @@ html, body { background: transparent; overflow: hidden; font-family: system-ui, 
 #robot.mood-energetic .eye { animation: blink 5s infinite; }
 #robot.mood-energetic .eye-r.wink { animation: wink .6s ease-in-out; }
 
-/* --- сосредоточенный --- */
 #robot.mood-focused .bot { animation: float-small 4.6s ease-in-out infinite; }
 #robot.mood-focused .eye { transform: scaleY(.34); }
 #robot.mood-focused .scan { display: inline; animation: scan 2.2s linear infinite; }
@@ -38,7 +35,6 @@ html, body { background: transparent; overflow: hidden; font-family: system-ui, 
 #robot.mood-focused .fin-r { animation: buzz .25s linear infinite alternate-reverse; }
 #robot.mood-focused .antenna { animation: wiggle 2.8s ease-in-out infinite; }
 
-/* --- грустный --- */
 #robot.mood-sad .bot { transform: translateY(10px); animation: sad-sway 4.5s ease-in-out infinite; }
 #robot.mood-sad .head { transform: rotate(-4deg); }
 #robot.mood-sad .eyes-open { opacity: .6; transform: translateY(8px); }
@@ -49,7 +45,6 @@ html, body { background: transparent; overflow: hidden; font-family: system-ui, 
 #robot.mood-sad .antenna { transform: rotate(-30deg); }
 #robot.mood-sad .bulb { fill: #8a8fa0; }
 
-/* --- радостный --- */
 #robot.mood-happy .eyes-open { display: none; }
 #robot.mood-happy .eyes-happy { display: inline; }
 #robot.mood-happy .sparkles { display: inline; }
@@ -61,7 +56,6 @@ html, body { background: transparent; overflow: hidden; font-family: system-ui, 
 #robot.mood-happy .s2 { animation-delay: .25s; }
 #robot.mood-happy .s3 { animation-delay: .5s; }
 
-/* --- любовь --- */
 #robot.mood-love .eyes-open { display: none; }
 #robot.mood-love .eyes-love { display: inline; }
 #robot.mood-love .hearts { display: inline; }
@@ -73,7 +67,6 @@ html, body { background: transparent; overflow: hidden; font-family: system-ui, 
 #robot.mood-love .fh2 { animation-delay: .7s; }
 #robot.mood-love .fh3 { animation-delay: 1.4s; }
 
-/* --- спящий --- */
 #robot.mood-sleeping .eyes-open { display: none; }
 #robot.mood-sleeping .eyes-closed { display: inline; }
 #robot.mood-sleeping .zzz { display: inline; }
@@ -87,13 +80,11 @@ html, body { background: transparent; overflow: hidden; font-family: system-ui, 
 #robot.mood-sleeping .z2 { animation-delay: 1s; }
 #robot.mood-sleeping .z3 { animation-delay: 2s; }
 
-/* --- «тишина» и «говорит» --- */
 #robot.quiet .bulb { fill: #8a8fa0; animation: none; }
 #robot.quiet .antenna { animation: none; }
 #robot.talk .bulb { animation: bulb .25s infinite; }
 #robot.talk .screen { filter: brightness(1.35); }
 
-/* --- разминки: Сеня показывает упражнение --- */
 #robot.ex-tilt .head { animation: ex-tilt 3s ease-in-out infinite; }
 #robot.ex-turn .head { animation: ex-turn 3.2s ease-in-out infinite; }
 #robot.ex-twist .head { animation: ex-twist 4s ease-in-out infinite; }
@@ -120,7 +111,6 @@ html, body { background: transparent; overflow: hidden; font-family: system-ui, 
 @keyframes ex-breath { 0%,100% { transform: scale(1); } 40% { transform: scale(1.12); } }
 @keyframes ex-walk { 0%,100% { transform: translateX(-18px) rotate(-3deg); } 50% { transform: translateX(18px) rotate(3deg); } }
 
-/* --- подняли (перетаскивание) --- */
 #robot.drag .eyes { display: none; }
 #robot.drag .eyes-open { display: inline; opacity: 1; transform: scale(1.18); }
 #robot.drag .eye { animation: none; transform: none; }
@@ -156,7 +146,6 @@ html, body { background: transparent; overflow: hidden; font-family: system-ui, 
 @keyframes sparkle { 0%,100% { transform: scale(.3) rotate(0); opacity: 0; } 50% { transform: scale(1) rotate(45deg); opacity: 1; } }
 @keyframes zfloat { 0% { transform: translate(0, 10px) scale(.6); opacity: 0; } 25% { opacity: 1; } 100% { transform: translate(8px, -14px) scale(1.1); opacity: 0; } }
 
-/* ---------- облачко ---------- */
 #bubbles { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-right: 6px; }
 .bubble { position: relative; max-width: 260px; min-width: 150px; background: #fff; border-radius: 16px; padding: 10px 12px; box-shadow: 0 4px 16px rgba(0,0,0,.28); animation: pop .22s ease-out; line-height: 1.35; font-size: 14px; }
 .bubble::after { content: ""; position: absolute; right: 48px; bottom: -8px; border: 9px solid transparent; border-top-color: #fff; border-bottom: 0; }
@@ -175,7 +164,6 @@ button.ghost { background: #e8edf3; color: #2b3a4a; }
 button.danger { background: #e5484d; }
 button:disabled { opacity: .45; cursor: default; }
 
-/* ---------- панель ---------- */
 #panel { width: 300px; max-height: 480px; overflow-y: auto; background: rgba(27, 36, 50, .97); color: #e8eef6; border-radius: 16px; padding: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.4); margin-right: 6px; display: flex; flex-direction: column; gap: 10px; user-select: none; }
 #panel::-webkit-scrollbar { width: 6px; }
 #panel::-webkit-scrollbar-thumb { background: #3c4a5e; border-radius: 3px; }
@@ -204,7 +192,6 @@ button:disabled { opacity: .45; cursor: default; }
 .wd.today .bar { box-shadow: 0 0 0 2px #2f7df6; }
 .wd.today span { color: #fff; font-weight: 700; }
 
-/* ---------- карточка разминки ---------- */
 #exercise { width: 300px; background: rgba(27, 36, 50, .97); color: #e8eef6; border-radius: 16px; padding: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.4); margin-right: 6px; display: flex; flex-direction: column; gap: 8px; }
 #exercise .ex-title { font-weight: 800; font-size: 15px; }
 #exercise .ex-steps { line-height: 1.4; color: #c7d4e4; }
@@ -232,7 +219,6 @@ details summary { cursor: pointer; color: #9db0c6; font-weight: 600; }
 .settings label.chk { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; }
 .settings input[type=number] { width: 70px; }
 
-/* ---------- гимнастика для глаз ---------- */
 #eyes-stage { position: relative; width: 640px; height: 300px; border-radius: 22px; background: rgba(13, 22, 34, .88); box-shadow: 0 8px 28px rgba(0,0,0,.45); margin-right: 6px; overflow: hidden; }
 #eyes-dot { position: absolute; left: 0; top: 0; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #7df9ff 45%, #1ea7d3); box-shadow: 0 0 18px 6px rgba(125, 249, 255, .55); }
 #eyes-info { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; color: #cfe3f5; font-size: 14px; display: flex; gap: 10px; justify-content: center; align-items: center; }

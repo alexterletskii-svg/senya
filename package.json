@@ -6,7 +6,8 @@
   "scripts": {
     "start": "electron .",
     "test": "node --test test/*.test.js",
-    "dist": "electron-builder"
+    "dist": "electron-builder",
+    "dist:win": "electron-builder --win --publish never"
   },
   "license": "MIT",
   "devDependencies": {
@@ -21,13 +22,22 @@
       "package.json"
     ],
     "win": {
-      "target": "portable"
+      "target": [
+        "nsis",
+        "portable"
+      ],
+      "icon": "build/icon.png"
     },
     "mac": {
       "target": "dmg"
     },
     "linux": {
       "target": "AppImage"
+    },
+    "icon": "build/icon.png",
+    "nsis": {
+      "oneClick": true,
+      "perMachine": false
     }
   },
   "productName": "Senya"

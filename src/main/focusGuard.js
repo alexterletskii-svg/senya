@@ -1,13 +1,5 @@
 'use strict';
 
-// Определяет, что Сене пора помолчать: полноэкранное приложение, режим презентации
-// или идущий звонок (микрофон занят). Только Windows; на других ОС ничего не делает.
-//
-// Устройство: один постоянный процесс PowerShell раз в 5 секунд печатает строку
-//   quns=<код SHQueryUserNotificationState> mic=<0|1>
-// Микрофон определяем по реестру Windows (ConsentStore\microphone): у приложения,
-// которое слушает прямо сейчас, LastUsedTimeStop == 0.
-
 const { spawn } = require('node:child_process');
 
 const PS_SCRIPT = `
@@ -43,7 +35,6 @@ function parseLine(line) {
   return { quns: Number(m[1]), mic: m[2] === '1' };
 }
 
-// QUNS: 2 — занят (полный экран), 3 — полноэкранный Direct3D, 4 — режим презентации, 7 — полноэкранное UWP-приложение
 function decide({ quns, mic }) {
   if (quns === 4) return { dnd: true, hide: true, reason: 'presentation' };
   if (quns === 2 || quns === 3 || quns === 7) return { dnd: true, hide: true, reason: 'fullscreen' };
@@ -51,10 +42,6 @@ function decide({ quns, mic }) {
   return { dnd: false, hide: false, reason: '' };
 }
 
-/**
- * @param {(state: {dnd: boolean, hide: boolean, reason: string}) => void} onChange — вызывается при смене состояния
- * @returns {() => void} остановка
- */
 function startFocusGuard(onChange, { platform = process.platform, spawnFn = spawn } = {}) {
   if (platform !== 'win32') return () => {};
   let last = '';
@@ -86,7 +73,7 @@ function startFocusGuard(onChange, { platform = process.platform, spawnFn = spaw
     }
   });
   return () => {
-    try { child.kill(); } catch { /* уже завершён */ }
+    try { child.kill(); } catch {  }
   };
 }
 

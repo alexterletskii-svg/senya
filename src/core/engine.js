@@ -18,12 +18,12 @@ const DEFAULT_SETTINGS = {
   shortBreakMin: 5,
   longBreakMin: 15,
   cyclesBeforeLong: 4,
-  idleSleepMin: 3, // простой дольше — Сеня засыпает
-  idleBreakMin: 5, // отсутствие дольше — засчитывается как перерыв
-  dailyGoal: 6, // перерывов в день для «цели дня» и серии
+  idleSleepMin: 3,
+  idleBreakMin: 5,
+  dailyGoal: 6,
   sound: true,
   volume: 60,
-  autoDnd: true, // молчать в полноэкранных приложениях, презентациях и звонках (Windows)
+  autoDnd: true,
   openAtLogin: false,
 };
 
@@ -32,13 +32,12 @@ const HAPPY_MS = 5000;
 const LOVE_MS = 5000;
 const AWAKE_ON_TOUCH_MS = 20000;
 const AWAKE_ON_ALERT_MS = 12000;
-const MAX_TICK_SEC = 5; // больший разрыв считаем засыпанием компьютера
+const MAX_TICK_SEC = 5;
 const SNOOZE_BREAK_MIN = 5;
 const MISSED_FOR_SAD = 3;
 const HISTORY_DAYS = 90;
 
 const REMINDER_KINDS = [
-  // kind, ключ интервала, ключ включения
   ['break', 'breakEveryMin', 'breakEnabled'],
   ['eyes', 'eyesEveryMin', 'eyesEnabled'],
   ['water', 'waterEveryMin', 'waterEnabled'],
@@ -55,12 +54,6 @@ const emptyDay = (date) => ({
 });
 
 class Engine extends EventEmitter {
-  /**
-   * @param {object} opts
-   * @param {() => number} [opts.now] — часы (для тестов)
-   * @param {() => number} [opts.rng] — генератор 0..1 (для тестов)
-   * @param {object} [opts.saved] — данные из persistable()
-   */
   constructor({ now = Date.now, rng = Math.random, saved = {} } = {}) {
     super();
     this._now = now;
@@ -71,7 +64,7 @@ class Engine extends EventEmitter {
 
     const t = this._now();
     this._last = t;
-    this._acc = { break: 0, eyes: 0, water: 0, posture: 0 }; // накопленные секунды активной работы
+    this._acc = { break: 0, eyes: 0, water: 0, posture: 0 };
     this._breakPending = false;
     this.missedBreaks = 0;
     this._idleSec = 0;
@@ -82,7 +75,7 @@ class Engine extends EventEmitter {
     this._awakeUntil = 0;
     this._reminderSeq = 1;
     this._activeAcc = 0;
-    this._dndUntil = 0; // 0 — выкл, Infinity — пока не выключат
+    this._dndUntil = 0;
     this._autoDnd = false;
     this._autoReason = '';
 
@@ -91,7 +84,6 @@ class Engine extends EventEmitter {
     this.exercise = { active: false, id: null, remainingSec: 0, total: 0 };
     this._lastExercise = null;
 
-    // История по дням (последние 90). Старый формат saved.stats переносим.
     this.history = {};
     for (const [k, v] of Object.entries(saved.history || {})) this.history[k] = { ...emptyDay(k), ...v };
     if (saved.stats && saved.stats.date && !this.history[saved.stats.date]) {
@@ -101,8 +93,6 @@ class Engine extends EventEmitter {
 
     this._mood = this.getMood();
   }
-
-  // ---------- настройки ----------
 
   updateSettings(patch) {
     const next = { ...this.settings };
@@ -123,16 +113,12 @@ class Engine extends EventEmitter {
     this._emitState();
   }
 
-  // ---------- главный тик ----------
-
-  /** Вызывать примерно раз в секунду. */
   tick() {
     const now = this._now();
     let dt = (now - this._last) / 1000;
     this._last = now;
     if (dt < 0) dt = 0;
 
-    // Компьютер спал / процесс был заморожен
     if (dt > MAX_TICK_SEC * 6) {
       if (dt >= this.settings.idleBreakMin * 60) this._restTaken();
       dt = 0;
@@ -153,7 +139,6 @@ class Engine extends EventEmitter {
     this._emitState();
   }
 
-  /** Системное время простоя (секунды без ввода). */
   setIdle(seconds) {
     const s = Math.max(0, seconds);
     const returned = s < this._lastIdle;
@@ -183,13 +168,10 @@ class Engine extends EventEmitter {
     }
   }
 
-  // ---------- не беспокоить ----------
-
   isDnd(now = this._now()) {
     return this._autoDnd || now < this._dndUntil;
   }
 
-  /** minutes > 0 — на столько минут; -1 — пока не выключат; иначе выключить. */
   setDnd(minutes) {
     const m = Number(minutes);
     if (m === -1) this._dndUntil = Infinity;
@@ -198,7 +180,6 @@ class Engine extends EventEmitter {
     this._emitState();
   }
 
-  /** Автоматический режим от системы (полный экран, презентация, звонок). */
   setAutoDnd(on, reason = '') {
     const next = Boolean(on) && this.settings.autoDnd;
     if (next === this._autoDnd && (!next || reason === this._autoReason)) return;
@@ -207,10 +188,6 @@ class Engine extends EventEmitter {
     this._emitState();
   }
 
-  // ---------- напоминания ----------
-
-  // Всё, что Сеня говорит сам по таймерам, глушится в «не беспокоить».
-  // force=true — ответ на действие пользователя (погладил, поболтал, добавил задачу).
   _say(r, force = false) {
     if (!force && this.isDnd()) return;
     this.emit('reminder', r);
@@ -260,9 +237,6 @@ class Engine extends EventEmitter {
     this._say(this._mk('hello', text, []), true);
   }
 
-  // ---------- перерывы ----------
-
-  /** Пользователь размялся. */
   ackBreak() {
     const wasSad = this.missedBreaks >= MISSED_FOR_SAD;
     this._restTaken(true);
@@ -288,8 +262,6 @@ class Engine extends EventEmitter {
     }
   }
 
-  // ---------- цель дня и серия ----------
-
   _metGoal(key) {
     const d = this.history[key];
     return Boolean(d) && d.breaks >= this.settings.dailyGoal;
@@ -304,7 +276,6 @@ class Engine extends EventEmitter {
     this._say(this._mk('goal', text, []), true);
   }
 
-  /** Дней подряд с выполненной целью (сегодня учитывается, если цель уже достигнута). */
   streak() {
     const d = new Date(this._now());
     if (!this._metGoal(dayKey(d.getTime()))) d.setDate(d.getDate() - 1);
@@ -345,8 +316,6 @@ class Engine extends EventEmitter {
     while (keys.length > HISTORY_DAYS) delete this.history[keys.shift()];
   }
 
-  // ---------- гимнастика для глаз ----------
-
   startEyes() {
     if (this.eyes.active) return;
     this.eyes = { active: true, remainingSec: EYES_SECONDS };
@@ -369,8 +338,6 @@ class Engine extends EventEmitter {
       this._say(this._mk('eyes-done', pick('eyesDone', this._rng), []), true);
     }
   }
-
-  // ---------- микро-разминки ----------
 
   startExercise(id) {
     if (this.exercise.active) return;
@@ -398,8 +365,6 @@ class Engine extends EventEmitter {
     this._happyUntil = this._now() + HAPPY_MS;
     this._say(this._mk('exercise-done', pick('exerciseDone', this._rng), []), true);
   }
-
-  // ---------- Pomodoro ----------
 
   startPomodoro() {
     this.pomo = { phase: 'work', running: true, remainingSec: this.settings.workMin * 60, cycle: this.pomo.cycle };
@@ -446,7 +411,6 @@ class Engine extends EventEmitter {
       const long = this.pomo.cycle % s.cyclesBeforeLong === 0;
       this.pomo.phase = long ? 'longBreak' : 'break';
       this.pomo.remainingSec = (long ? s.longBreakMin : s.shortBreakMin) * 60;
-      // Перерыв по таймеру = настоящий перерыв
       this._restTaken(true);
     } else {
       this.pomo.phase = 'work';
@@ -460,8 +424,6 @@ class Engine extends EventEmitter {
     const key = { work: 'pomodoroWork', break: 'pomodoroBreak', longBreak: 'pomodoroLong' }[phase];
     this._say(this._mk('pomodoro', pick(key, this._rng), [], { phase }));
   }
-
-  // ---------- список дел ----------
 
   addTask(raw) {
     const text = String(raw || '').trim();
@@ -491,7 +453,6 @@ class Engine extends EventEmitter {
     this.stats.tasks += 1;
     this._happyUntil = now + HAPPY_MS;
     if (t.repeat) {
-      // Повторяющаяся задача не закрывается: переезжает на следующий раз
       t.dueAt = nextDue(t.repeat, Math.max(now, t.dueAt || now));
       t.notified = false;
       t.lastDoneAt = now;
@@ -548,8 +509,6 @@ class Engine extends EventEmitter {
     }
   }
 
-  // ---------- общение ----------
-
   _startLove(silent = false) {
     const now = this._now();
     const already = now < this._loveUntil;
@@ -558,13 +517,11 @@ class Engine extends EventEmitter {
     if (!already && !silent) this._say(this._mk('love', pick('love', this._rng), []), true);
   }
 
-  /** Погладили. */
   pet() {
     this._startLove();
     this._emitState();
   }
 
-  /** Тыкнули: будит спящего Сеню. */
   poke() {
     if (this.getMood() !== 'sleeping') return;
     this._awakeUntil = this._now() + AWAKE_ON_TOUCH_MS;
@@ -572,14 +529,11 @@ class Engine extends EventEmitter {
     this._emitState();
   }
 
-  /** Поболтать. */
   chat() {
     this._awakeUntil = Math.max(this._awakeUntil, this._now() + AWAKE_ON_TOUCH_MS);
     this._say(this._mk('chat', pick('chat', this._rng), []), true);
     this._emitState();
   }
-
-  // ---------- настроение и состояние ----------
 
   getMood() {
     const now = this._now();
@@ -627,8 +581,6 @@ class Engine extends EventEmitter {
     this._mood = this.getMood();
     this.emit('state', this.snapshot());
   }
-
-  // ---------- единая точка действий (UI → движок) ----------
 
   dispatch(action, payload) {
     switch (action) {
