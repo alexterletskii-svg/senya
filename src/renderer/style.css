@@ -1,0 +1,181 @@
+* { box-sizing: border-box; margin: 0; padding: 0; }
+html, body { background: transparent; overflow: hidden; font-family: system-ui, "Segoe UI", Roboto, sans-serif; font-size: 13px; color: #1d2733; user-select: none; }
+[hidden] { display: none !important; }
+
+#app { position: fixed; right: 0; bottom: 0; display: inline-flex; flex-direction: column; align-items: flex-end; gap: 8px; padding: 8px; width: max-content; }
+
+/* ---------- робот ---------- */
+#robot-wrap { width: 150px; height: 188px; cursor: grab; touch-action: none; flex: none; }
+#robot-wrap:active { cursor: grabbing; }
+#robot { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 2px 3px rgba(0,0,0,.25)); }
+
+#robot .eyes, #robot .brows, #robot .mouth, #robot .keyboard, #robot .hat-g, #robot .sparkles, #robot .zzz { display: none; }
+#robot .eyes-open, #robot .mouth-smile { display: inline; }
+#robot .eye, #robot .arm, #robot .head, #robot .bot, #robot .antenna, #robot .torso, #robot .lights circle, #robot .shadow, #robot .sp, #robot .z {
+  transform-box: fill-box;
+}
+#robot .eye { transform-origin: 50% 50%; }
+#robot .arm { transform-origin: 50% 0%; }
+#robot .head { transform-origin: 50% 100%; }
+#robot .antenna { transform-origin: 50% 100%; }
+#robot .bot { transform-origin: 50% 100%; }
+#robot .torso { transform-origin: 50% 0%; }
+#robot .shadow { transform-origin: 50% 50%; }
+#robot .sp, #robot .z { transform-origin: 50% 50%; }
+
+#robot.hat .hat-g { display: inline; }
+#robot.hat .antenna { display: none; }
+
+/* --- бодрый --- */
+#robot.mood-energetic .bot { animation: float 3.2s ease-in-out infinite; }
+#robot.mood-energetic .antenna { animation: wiggle 1.4s ease-in-out infinite; }
+#robot.mood-energetic .bulb { animation: bulb 1.1s ease-in-out infinite; }
+#robot.mood-energetic .eye { animation: blink 4.5s infinite; }
+#robot.mood-energetic .arm-l { animation: swing-l 3.2s ease-in-out infinite; }
+#robot.mood-energetic .arm-r { animation: swing-r 3.2s ease-in-out infinite; }
+#robot.mood-energetic .lights circle { animation: light 1.6s infinite; }
+#robot.mood-energetic .lights circle:nth-child(2) { animation-delay: .5s; }
+#robot.mood-energetic .lights circle:nth-child(3) { animation-delay: 1s; }
+
+/* --- сосредоточенный --- */
+#robot.mood-focused .eyes-open { display: inline; }
+#robot.mood-focused .eye { transform: scaleY(.38); }
+#robot.mood-focused .mouth-smile { display: none; }
+#robot.mood-focused .mouth-flat { display: inline; }
+#robot.mood-focused .keyboard { display: inline; }
+#robot.mood-focused .arm-l { animation: type 0.32s ease-in-out infinite alternate; }
+#robot.mood-focused .arm-r { animation: type 0.32s ease-in-out infinite alternate-reverse; }
+#robot.mood-focused .lights circle { animation: light .5s infinite; }
+#robot.mood-focused .lights circle:nth-child(2) { animation-delay: .17s; }
+#robot.mood-focused .lights circle:nth-child(3) { animation-delay: .34s; }
+#robot.mood-focused .bot { animation: focus-bob 1.2s ease-in-out infinite; }
+#robot.mood-focused .antenna { animation: wiggle 2.4s ease-in-out infinite; }
+
+/* --- грустный --- */
+#robot.mood-sad .eyes-open { display: inline; opacity: .55; }
+#robot.mood-sad .eye { transform: translateY(4px) scaleY(.7); }
+#robot.mood-sad .brows { display: inline; }
+#robot.mood-sad .mouth-smile { display: none; }
+#robot.mood-sad .mouth-sad { display: inline; opacity: .6; }
+#robot.mood-sad .screen { fill: #0c1620; }
+#robot.mood-sad .head { transform: translateY(6px) rotate(-3deg); }
+#robot.mood-sad .torso { transform: scaleY(.95); }
+#robot.mood-sad .arm-l { transform: translateY(5px) rotate(7deg); }
+#robot.mood-sad .arm-r { transform: translateY(5px) rotate(-7deg); }
+#robot.mood-sad .lights { opacity: .3; }
+#robot.mood-sad .antenna { transform: rotate(-22deg) translateY(6px); }
+#robot.mood-sad .bulb { fill: #7a8696; }
+#robot.mood-sad .bot { animation: sad-sway 4.5s ease-in-out infinite; }
+
+/* --- радостный --- */
+#robot.mood-happy .eyes-open, #robot.mood-happy .mouth-smile { display: none; }
+#robot.mood-happy .eyes-happy, #robot.mood-happy .mouth-happy { display: inline; }
+#robot.mood-happy .sparkles { display: inline; }
+#robot.mood-happy .bot { animation: jump .62s ease-in-out infinite; }
+#robot.mood-happy .shadow { animation: shadow-jump .62s ease-in-out infinite; }
+#robot.mood-happy .arm-l { animation: cheer-l .31s ease-in-out infinite alternate; }
+#robot.mood-happy .arm-r { animation: cheer-r .31s ease-in-out infinite alternate; }
+#robot.mood-happy .lights circle { animation: light .25s infinite; }
+#robot.mood-happy .lights circle:nth-child(2) { animation-delay: .08s; }
+#robot.mood-happy .lights circle:nth-child(3) { animation-delay: .16s; }
+#robot.mood-happy .bulb { animation: bulb .3s infinite; }
+#robot.mood-happy .sp { animation: sparkle .8s ease-in-out infinite; }
+#robot.mood-happy .s2 { animation-delay: .25s; }
+#robot.mood-happy .s3 { animation-delay: .5s; }
+
+/* --- спящий --- */
+#robot.mood-sleeping .eyes-open, #robot.mood-sleeping .mouth-smile { display: none; }
+#robot.mood-sleeping .eyes-closed, #robot.mood-sleeping .mouth-sleep { display: inline; }
+#robot.mood-sleeping .zzz { display: inline; }
+#robot.mood-sleeping .head { transform: rotate(7deg) translateY(4px); }
+#robot.mood-sleeping .antenna { transform: rotate(28deg); }
+#robot.mood-sleeping .bulb { fill: #6b7686; }
+#robot.mood-sleeping .lights circle { animation: light 4s infinite; opacity: .4; }
+#robot.mood-sleeping .screen { fill: #0e1a26; }
+#robot.mood-sleeping .bot { animation: breathe 4s ease-in-out infinite; }
+#robot.mood-sleeping .arm-l { transform: rotate(5deg); }
+#robot.mood-sleeping .arm-r { transform: rotate(-5deg); }
+#robot.mood-sleeping .z { animation: zfloat 3s ease-in infinite; opacity: 0; }
+#robot.mood-sleeping .z2 { animation-delay: 1s; }
+#robot.mood-sleeping .z3 { animation-delay: 2s; }
+
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
+@keyframes focus-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(1.5px); } }
+@keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.02, 1.015); } }
+@keyframes sad-sway { 0%,100% { transform: translateY(2px) rotate(-.8deg); } 50% { transform: translateY(3px) rotate(.8deg); } }
+@keyframes wiggle { 0%,100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
+@keyframes bulb { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.5) drop-shadow(0 0 4px #ffd166); } }
+@keyframes blink { 0%,92%,100% { transform: scaleY(1); } 95% { transform: scaleY(.08); } }
+@keyframes swing-l { 0%,100% { transform: rotate(2deg); } 50% { transform: rotate(-3deg); } }
+@keyframes swing-r { 0%,100% { transform: rotate(-2deg); } 50% { transform: rotate(3deg); } }
+@keyframes type { from { transform: translateY(0); } to { transform: translateY(-5px); } }
+@keyframes light { 0%,100% { opacity: 1; } 50% { opacity: .2; } }
+@keyframes jump {
+  0%,100% { transform: translateY(0) scale(1.04, .94); }
+  45% { transform: translateY(-26px) scale(.97, 1.04); }
+}
+@keyframes shadow-jump { 0%,100% { transform: scale(1); opacity: .22; } 45% { transform: scale(.65); opacity: .1; } }
+@keyframes cheer-l { from { transform: rotate(145deg); } to { transform: rotate(165deg); } }
+@keyframes cheer-r { from { transform: rotate(-145deg); } to { transform: rotate(-165deg); } }
+@keyframes sparkle { 0%,100% { transform: scale(.3) rotate(0); opacity: 0; } 50% { transform: scale(1) rotate(45deg); opacity: 1; } }
+@keyframes zfloat { 0% { transform: translate(0, 10px) scale(.6); opacity: 0; } 25% { opacity: 1; } 100% { transform: translate(8px, -14px) scale(1.1); opacity: 0; } }
+
+/* ---------- облачко ---------- */
+#bubbles { display: flex; flex-direction: column; align-items: flex-end; gap: 6px; margin-right: 6px; }
+.bubble { position: relative; max-width: 260px; min-width: 150px; background: #fff; border-radius: 16px; padding: 10px 12px; box-shadow: 0 4px 16px rgba(0,0,0,.28); animation: pop .22s ease-out; line-height: 1.35; font-size: 14px; }
+.bubble::after { content: ""; position: absolute; right: 48px; bottom: -8px; border: 9px solid transparent; border-top-color: #fff; border-bottom: 0; }
+.bubble .x { position: absolute; top: 4px; right: 8px; border: 0; background: none; color: #8a97a6; font-size: 15px; cursor: pointer; }
+.bubble .x:hover { color: #1d2733; }
+.bubble .text { padding-right: 14px; }
+.bubble .actions { display: flex; gap: 6px; margin-top: 8px; flex-wrap: wrap; }
+.bubble.kind-task { background: #fff7d6; }
+.bubble.kind-task::after { border-top-color: #fff7d6; }
+.bubble.kind-break.sad { background: #e6ecf5; }
+@keyframes pop { from { transform: scale(.7); opacity: 0; transform-origin: 85% 100%; } to { transform: scale(1); opacity: 1; } }
+
+button, .btn { font: inherit; cursor: pointer; border: 0; border-radius: 9px; padding: 5px 10px; background: #2f7df6; color: #fff; font-weight: 600; }
+button:hover { filter: brightness(1.1); }
+button.ghost { background: #e8edf3; color: #2b3a4a; }
+button.danger { background: #e5484d; }
+button:disabled { opacity: .45; cursor: default; }
+
+/* ---------- панель ---------- */
+#panel { width: 300px; max-height: 480px; overflow-y: auto; background: rgba(27, 36, 50, .97); color: #e8eef6; border-radius: 16px; padding: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.4); margin-right: 6px; display: flex; flex-direction: column; gap: 10px; user-select: none; }
+#panel::-webkit-scrollbar { width: 6px; }
+#panel::-webkit-scrollbar-thumb { background: #3c4a5e; border-radius: 3px; }
+#panel h3 { font-size: 13px; text-transform: uppercase; letter-spacing: .05em; color: #8fa3bb; font-weight: 700; }
+.p-head { display: flex; justify-content: space-between; align-items: center; }
+.p-head b { font-size: 16px; }
+.stats { color: #9db0c6; font-size: 12px; }
+.card { background: #243044; border-radius: 12px; padding: 10px; display: flex; flex-direction: column; gap: 8px; }
+.pomo-time { font-size: 34px; font-weight: 800; font-variant-numeric: tabular-nums; text-align: center; line-height: 1; }
+.pomo-time.work { color: #ffcc00; }
+.pomo-time.break { color: #6bff9a; }
+.pomo-phase { text-align: center; color: #9db0c6; font-size: 12px; }
+.row { display: flex; gap: 6px; flex-wrap: wrap; }
+.row > * { flex: 1; }
+.task-add { display: flex; gap: 6px; }
+.task-add input { flex: 1; min-width: 0; }
+input[type=text], input[type=number] { font: inherit; background: #1a2332; color: #e8eef6; border: 1px solid #364760; border-radius: 9px; padding: 6px 9px; outline: none; user-select: text; }
+input:focus { border-color: #2f7df6; }
+.hint { font-size: 11px; color: #7f93ab; }
+.tasks { display: flex; flex-direction: column; gap: 4px; max-height: 190px; overflow-y: auto; }
+.task { display: flex; align-items: center; gap: 8px; background: #1f2a3b; border-radius: 9px; padding: 6px 8px; }
+.task input { accent-color: #2f7df6; width: 16px; height: 16px; flex: none; cursor: pointer; }
+.task .t { flex: 1; min-width: 0; word-break: break-word; }
+.task.done .t { text-decoration: line-through; color: #6c7f97; }
+.task .due { font-size: 11px; color: #9db0c6; white-space: nowrap; }
+.task .due.late { color: #ff8a8a; }
+.task .rm { background: none; color: #7f93ab; padding: 0 4px; font-size: 14px; }
+.task .rm:hover { color: #ff8a8a; }
+.empty { color: #7f93ab; text-align: center; padding: 6px; }
+details summary { cursor: pointer; color: #9db0c6; font-weight: 600; }
+.settings { display: grid; grid-template-columns: 1fr 70px; gap: 6px 8px; align-items: center; margin-top: 8px; }
+.settings label.chk { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; }
+.settings input[type=number] { width: 70px; }
+
+/* ---------- гимнастика для глаз ---------- */
+#eyes-stage { position: relative; width: 640px; height: 300px; border-radius: 22px; background: rgba(13, 22, 34, .88); box-shadow: 0 8px 28px rgba(0,0,0,.45); margin-right: 6px; overflow: hidden; }
+#eyes-dot { position: absolute; left: 0; top: 0; width: 28px; height: 28px; margin: -14px 0 0 -14px; border-radius: 50%; background: radial-gradient(circle at 35% 35%, #fff, #7df9ff 45%, #1ea7d3); box-shadow: 0 0 18px 6px rgba(125, 249, 255, .55); }
+#eyes-info { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; color: #cfe3f5; font-size: 14px; display: flex; gap: 10px; justify-content: center; align-items: center; }
+#eyes-info b { font-size: 18px; color: #7df9ff; font-variant-numeric: tabular-nums; }

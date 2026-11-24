@@ -1,0 +1,33 @@
+{
+  "name": "robik",
+  "version": "0.1.0",
+  "description": "Робик — цифровой напарник на рабочем столе: перерывы, гимнастика для глаз, Pomodoro, список дел",
+  "main": "src/main/main.js",
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test test/*.test.js",
+    "dist": "electron-builder"
+  },
+  "license": "MIT",
+  "devDependencies": {
+    "electron": "^33.4.11",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "dev.senya.robik",
+    "productName": "Робик",
+    "files": [
+      "src/**/*",
+      "package.json"
+    ],
+    "win": {
+      "target": "portable"
+    },
+    "mac": {
+      "target": "dmg"
+    },
+    "linux": {
+      "target": "AppImage"
+    }
+  }
+}
