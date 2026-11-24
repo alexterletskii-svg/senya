@@ -6,6 +6,7 @@ const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, screen, powerMonit
 const { Engine } = require('../core/engine');
 const { Chat } = require('./ai');
 const { startFocusGuard } = require('./focusGuard');
+const { Runtime, CATALOG, validate } = require('../core/blocks');
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
@@ -14,6 +15,8 @@ const SAVE_FILE = () => path.join(app.getPath('userData'), 'senya.json');
 
 let win = null;
 let tray = null;
+let editorWin = null;
+let runtime = null;
 let engine = null;
 let chat = null;
 let stopGuard = () => {};
@@ -139,12 +142,32 @@ function startEngine(saved) {
   engine.on('exercise-start', (r) => send('exercise-start', r));
   engine.on('tasks-changed', saveSoon);
 
+  runtime = new Runtime({
+    api: {
+      say: (t) => engine.sayCustom(t),
+      emotion: (m) => engine.setEmotion(m),
+      sound: (n) => send('sound', n),
+      pomodoroRunning: () => engine.pomo.phase === 'work' && engine.pomo.running,
+      openTasks: () => engine.tasks.filter((t) => !t.done).length,
+    },
+  });
+  runtime.onError = (err) => engine.sayCustom(`Ошибка в программе: ${err.message}`);
+  runtime.load(engine.program);
+  engine.on('program-changed', (p) => {
+    runtime.stopAll();
+    runtime.load(p);
+    saveSoon();
+  });
+  engine.on('event', (name) => runtime.fire(name));
+  setTimeout(() => runtime.fire('start'), 3000);
+
   setInterval(() => {
     try {
       engine.setIdle(powerMonitor.getSystemIdleTime());
     } catch {
     }
     engine.tick();
+    runtime.tick(1);
   }, 1000);
   setInterval(save, 30000);
 
@@ -178,12 +201,79 @@ async function askAi(text) {
   send('reminder', { id: Date.now() + 1, kind: 'chat', text: r.text, actions: [] });
 }
 
+function openEditor() {
+  if (editorWin && !editorWin.isDestroyed()) {
+    editorWin.show();
+    editorWin.focus();
+    return;
+  }
+  editorWin = new BrowserWindow({
+    width: 1000,
+    height: 700,
+    minWidth: 760,
+    minHeight: 480,
+    title: 'Сеня — конструктор',
+    backgroundColor: '#0c0d0b',
+    autoHideMenuBar: true,
+    webPreferences: {
+      preload: path.join(__dirname, 'preload.js'),
+      contextIsolation: true,
+      nodeIntegration: false,
+      sandbox: true,
+    },
+  });
+  editorWin.setMenuBarVisibility(false);
+  editorWin.loadFile(path.join(__dirname, '..', 'renderer', 'editor.html'));
+  editorWin.on('closed', () => {
+    editorWin = null;
+  });
+}
+
+function findRule(ruleId) {
+  return runtime.rules.find((r) => r.id === ruleId);
+}
+
+function wireProgramIpc() {
+  ipcMain.handle('program:get', () => ({
+    program: engine.program,
+    catalog: CATALOG,
+    problems: validate(engine.program),
+    ai: chat.available,
+  }));
+  ipcMain.handle('program:check', (_e, program) => validate(program));
+  ipcMain.handle('program:save', (_e, program) => {
+    engine.setProgram(program);
+    return validate(engine.program);
+  });
+  ipcMain.handle('program:run', (_e, ruleId) => {
+    const rule = findRule(ruleId);
+    if (!rule) return { ok: false };
+    runtime.run(rule);
+    return { ok: true };
+  });
+  ipcMain.handle('program:stop', () => {
+    runtime.stopAll();
+    return { ok: true };
+  });
+  ipcMain.handle('program:explain', async (_e, problem) => {
+    const msg = String((problem && problem.message) || '').slice(0, 300);
+    const hint = String((problem && problem.hint) || '').slice(0, 300);
+    const r = await chat.ask(
+      `Ребёнок собирает программу для робота из блоков, как в Scratch, и получил ошибку: «${msg}» ${hint} ` +
+      'Объясни простыми словами, почему так вышло и как исправить. Два-три коротких предложения.',
+    );
+    return r;
+  });
+}
+
 function wireIpc() {
+  wireProgramIpc();
   ipcMain.handle('get-state', () => ({ ...engine.snapshot(), ai: chat.available, platform: process.platform }));
 
   ipcMain.on('act', (_e, action, payload) => {
     if (action === 'app:quit') return app.quit();
     if (action === 'app:hide') return toggleSilent(true);
+    if (action === 'editor:open') return openEditor();
     if (action === 'ai:ask') return void askAi(payload);
     if (action === 'settings:set' && payload && 'openAtLogin' in payload) {
       app.setLoginItemSettings({ openAtLogin: Boolean(payload.openAtLogin) });
@@ -233,6 +323,7 @@ function refreshTray() {
   tray.setContextMenu(Menu.buildFromTemplate([
     { label: silent ? 'Показать Сеню' : 'Спрятать Сеню (без напоминаний)', click: () => toggleSilent(!silent) },
     { label: `Открыть меню (${HOTKEY.replace('CommandOrControl', 'Ctrl')})`, click: summon },
+    { label: 'Конструктор поведения', click: openEditor },
     { type: 'separator' },
     { label: 'Не беспокоить: 30 минут', click: () => engine.setDnd(30) },
     { label: 'Не беспокоить: 1 час', click: () => engine.setDnd(60) },

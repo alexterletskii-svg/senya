@@ -238,6 +238,7 @@
       ]),
       el('details', {}, [el('summary', { text: 'Настройки' }), P.settings]),
       el('div', { class: 'row' }, [
+        el('button', { class: 'ghost', text: 'Конструктор', title: 'Собрать поведение Сени из блоков', onclick: () => api.act('editor:open') }),
         el('button', { class: 'ghost', text: 'Спрятать', title: 'Скрыть Сеню; вернуть — через иконку в трее или Ctrl+Alt+S', onclick: () => api.act('app:hide') }),
         el('button', { class: 'danger', text: 'Выход', onclick: () => api.act('app:quit') }),
       ]),
@@ -557,6 +558,7 @@
   api.onState(onState);
   api.onCursor(onCursor);
   api.onExerciseStart(() => { closeBubble(); Sound.play('work'); });
+  api.onSound((name) => Sound.play(name));
   api.onOpenPanel(() => { if (panel.hidden) togglePanel(); else P.input.focus(); });
   api.onReminder((r) => pushBubble(r));
   api.onCelebrate((r) => pushBubble({ kind: 'happy', text: r.text, actions: [] }, { beepOn: false }));

@@ -15,4 +15,13 @@ contextBridge.exposeInMainWorld('senya', {
   onEyesStart: (cb) => ipcRenderer.on('eyes-start', (_e, r) => cb(r)),
   onExerciseStart: (cb) => ipcRenderer.on('exercise-start', (_e, r) => cb(r)),
   onOpenPanel: (cb) => ipcRenderer.on('open-panel', () => cb()),
+  onSound: (cb) => ipcRenderer.on('sound', (_e, name) => cb(name)),
+  program: {
+    get: () => ipcRenderer.invoke('program:get'),
+    save: (program) => ipcRenderer.invoke('program:save', program),
+    check: (program) => ipcRenderer.invoke('program:check', program),
+    run: (ruleId) => ipcRenderer.invoke('program:run', ruleId),
+    stop: () => ipcRenderer.invoke('program:stop'),
+    explain: (problem) => ipcRenderer.invoke('program:explain', problem),
+  },
 });
