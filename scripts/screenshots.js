@@ -29,6 +29,8 @@ app.whenReady().then(async () => {
     webPreferences: { preload: path.join(__dirname, '..', 'src', 'main', 'preload.js'), contextIsolation: true, sandbox: true },
   });
   await win.loadFile(path.join(__dirname, '..', 'src', 'renderer', 'index.html'));
+  win.webContents.on('console-message', (_e, _l, msg, line) => console.log('[renderer]', msg, line));
+  win.webContents.on('preload-error', (_e, f, err) => console.log('[preload-error]', err));
   await win.webContents.insertCSS('html,body{background:#c9d6e6 !important} #app{right:auto !important;left:0 !important}');
 
   const shot = async (name) => {
@@ -44,12 +46,16 @@ app.whenReady().then(async () => {
     ['sad', { missedBreaks: 3 }],
     ['happy', {}],
     ['sleeping', {}],
+    ['love', {}],
   ];
   for (const [mood, patch] of moods) {
     send('state', state({ mood, ...patch }));
     await shot(`mood-${mood}`);
   }
 
+  send('state', state({ mood: 'energetic' }));
+  await win.webContents.executeJavaScript("document.getElementById('robot').classList.add('drag')");
+  await shot('mood-drag');
   send('state', state({ mood: 'energetic' }));
   send('reminder', { id: 1, kind: 'break', text: 'Пора размяться! Встань, потянись.', actions: [{ id: 'break:ack', label: 'Размялся ✓' }, { id: 'break:snooze', label: '+5 мин' }] });
   await shot('bubble-break');

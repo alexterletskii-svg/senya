@@ -11,5 +11,6 @@ contextBridge.exposeInMainWorld('robik', {
   onState: (cb) => ipcRenderer.on('state', (_e, s) => cb(s)),
   onReminder: (cb) => ipcRenderer.on('reminder', (_e, r) => cb(r)),
   onCelebrate: (cb) => ipcRenderer.on('celebrate', (_e, r) => cb(r)),
+  onCursor: (cb) => ipcRenderer.on('cursor', (_e, p) => cb(p)),
   onEyesStart: (cb) => ipcRenderer.on('eyes-start', (_e, r) => cb(r)),
 });

@@ -128,6 +128,17 @@ function startEngine(saved) {
     engine.tick();
   }, 1000);
   setInterval(save, 30000);
+
+  // Позиция курсора для глаз Робика (в координатах экрана)
+  let lastCursor = '';
+  setInterval(() => {
+    if (!win || win.isDestroyed() || !win.isVisible()) return;
+    const p = screen.getCursorScreenPoint();
+    const key = `${p.x},${p.y}`;
+    if (key === lastCursor) return;
+    lastCursor = key;
+    win.webContents.send('cursor', p);
+  }, 80);
 }
 
 // ---------- IPC ----------

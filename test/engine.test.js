@@ -36,8 +36,10 @@ test('три пропущенных перерыва → грустный; ack �
   assert.equal(e.missedBreaks, 3);
   assert.equal(e.getMood(), 'sad');
   e.ackBreak();
-  assert.equal(e.getMood(), 'energetic');
+  assert.equal(e.getMood(), 'love'); // облегчение: сердечки
   assert.equal(e.stats.breaks, 1);
+  advance(6);
+  assert.equal(e.getMood(), 'energetic');
 });
 
 test('snooze перерыва: следующее напоминание через 5 минут и без «пропуска»', () => {
@@ -186,4 +188,52 @@ test('настройки валидируются', () => {
   assert.equal(e.settings.waterEveryMin, 45);
   assert.equal(e.settings.sound, false);
   assert.ok(!('hack' in e.settings));
+});
+
+test('погладить → сердечки на 5 секунд, потом бодрый', () => {
+  const { e, reminders, advance } = makeEngine();
+  e.dispatch('pet');
+  assert.equal(e.getMood(), 'love');
+  assert.ok(kinds(reminders).includes('love'));
+  advance(4);
+  assert.equal(e.getMood(), 'love');
+  advance(2);
+  assert.equal(e.getMood(), 'energetic');
+});
+
+test('повторные поглаживания продлевают любовь без спама фразами', () => {
+  const { e, reminders, advance } = makeEngine();
+  e.pet(); advance(2); e.pet(); advance(2); e.pet();
+  assert.equal(reminders.filter((r) => r.kind === 'love').length, 1);
+  advance(4);
+  assert.equal(e.getMood(), 'love');
+});
+
+test('гладить можно и спящего: он просыпается', () => {
+  const { e, advance } = makeEngine();
+  advance(4 * 60, 4 * 60);
+  assert.equal(e.getMood(), 'sleeping');
+  e.pet();
+  assert.equal(e.getMood(), 'love');
+  advance(6, 4 * 60 + 6);
+  assert.equal(e.getMood(), 'energetic'); // всё ещё не спит после ласки
+  advance(30, 5 * 60);
+  assert.equal(e.getMood(), 'sleeping'); // но простой продолжается
+});
+
+test('poke будит спящего и не трогает бодрого', () => {
+  const { e, reminders, advance } = makeEngine();
+  e.poke();
+  assert.ok(!kinds(reminders).includes('poke'));
+  advance(4 * 60, 4 * 60);
+  e.poke();
+  assert.equal(e.getMood(), 'energetic');
+  assert.ok(kinds(reminders).includes('poke'));
+});
+
+test('chat говорит фразу', () => {
+  const { e, reminders } = makeEngine();
+  e.dispatch('chat');
+  const r = reminders.find((x) => x.kind === 'chat');
+  assert.ok(r && r.text.length > 5);
 });

@@ -33,9 +33,64 @@
   new ResizeObserver(reportLayout).observe(appEl);
 
   // ---------- настроение ----------
-  function applyMood(s) {
-    robot.setAttribute('class', `mood-${s.mood}${s.hardHat ? ' hat' : ''}`);
+  const flags = { drag: false, land: false };
+  function refreshClass() {
+    if (!state) return;
+    robot.setAttribute('class',
+      `mood-${state.mood}${state.hardHat ? ' hat' : ''}${flags.drag ? ' drag' : ''}${flags.land ? ' land' : ''}`);
   }
+  function applyMood() { refreshClass(); }
+
+  // ---------- взгляд: глаза следят за курсором, иногда осматриваются ----------
+  const look = $('.look', robot);
+  let cur = { x: 0, y: 0 };
+  let tgt = { x: 0, y: 0 };
+  let cursorTgt = { x: 0, y: 0 };
+  let lastMove = 0;
+  let glanceUntil = 0;
+  let lookRaf = 0;
+
+  function stepLook() {
+    lookRaf = 0;
+    cur.x += (tgt.x - cur.x) * 0.18;
+    cur.y += (tgt.y - cur.y) * 0.18;
+    look.setAttribute('transform', `translate(${cur.x.toFixed(2)} ${cur.y.toFixed(2)})`);
+    if (Math.abs(tgt.x - cur.x) > 0.05 || Math.abs(tgt.y - cur.y) > 0.05) lookRaf = requestAnimationFrame(stepLook);
+  }
+  function setLook(x, y) {
+    tgt = { x, y };
+    if (!lookRaf) lookRaf = requestAnimationFrame(stepLook);
+  }
+  function onCursor(p) {
+    const r = robotWrap.getBoundingClientRect();
+    const cx = window.screenX + r.left + r.width / 2;
+    const cy = window.screenY + r.top + r.height / 2;
+    const dx = p.x - cx;
+    const dy = p.y - cy;
+    const dist = Math.hypot(dx, dy);
+    const k = Math.min(dist / 140, 1);
+    cursorTgt = dist < 1 ? { x: 0, y: 0 } : { x: (dx / dist) * k * 10, y: (dy / dist) * k * 7 };
+    lastMove = performance.now();
+    if (lastMove > glanceUntil && !(state && state.mood === 'sleeping')) setLook(cursorTgt.x, cursorTgt.y);
+  }
+  function idleLoop() {
+    setTimeout(() => {
+      const now = performance.now();
+      if (state && state.mood === 'energetic' && !flags.drag && now - lastMove > 3000) {
+        if (Math.random() < 0.3) {
+          const eye = $('.eye-r', robot);
+          eye.classList.add('wink');
+          setTimeout(() => eye.classList.remove('wink'), 700);
+        } else {
+          setLook((Math.random() - 0.5) * 20, (Math.random() - 0.5) * 10);
+          glanceUntil = now + 1500;
+          setTimeout(() => setLook(cursorTgt.x, cursorTgt.y), 1500);
+        }
+      }
+      idleLoop();
+    }, 6000 + Math.random() * 8000);
+  }
+  idleLoop();
 
   // ---------- звук ----------
   let audio = null;
@@ -63,7 +118,7 @@
   const bubblesEl = $('#bubbles');
   const queue = [];
   let current = null;
-  const TTL = { break: 60000, eyes: 45000, water: 14000, posture: 14000, pomodoro: 9000, wake: 6000, hello: 6000, 'task-added': 3500, 'eyes-done': 4500, happy: 4500, task: 0 };
+  const TTL = { break: 60000, eyes: 45000, water: 14000, posture: 14000, pomodoro: 9000, wake: 6000, hello: 6000, 'task-added': 3500, 'eyes-done': 4500, happy: 4500, love: 3500, poke: 4000, chat: 9000, task: 0 };
 
   function showNext() {
     if (current || queue.length === 0) return;
@@ -110,7 +165,7 @@
     if (i >= 0) queue.splice(i, 1);
     queue.push({ ...r });
     if (queue.length > 5) queue.shift();
-    if (beepOn && !['task-added', 'eyes-done', 'wake', 'hello'].includes(r.kind)) beep();
+    if (beepOn && !['task-added', 'eyes-done', 'wake', 'hello', 'love', 'poke', 'chat'].includes(r.kind)) beep();
     showNext();
   }
 
@@ -142,9 +197,11 @@
         P.pomoTime, P.pomoPhase,
         el('div', { class: 'row' }, [P.pomoStart, P.pomoSkip, P.pomoStop]),
       ]),
-      el('div', { class: 'row' }, [
+      el('div', { class: 'row quad' }, [
         el('button', { class: 'ghost', text: '👀 Гимнастика', onclick: () => api.act('eyes:start') }),
         el('button', { class: 'ghost', text: '🧘 Размялся', onclick: () => api.act('break:ack') }),
+        el('button', { class: 'ghost', text: '💗 Погладить', onclick: () => api.act('pet') }),
+        el('button', { class: 'ghost', text: '💬 Поболтать', onclick: () => api.act('chat') }),
       ]),
       el('div', { class: 'card' }, [
         el('h3', { text: 'Список дел' }),
@@ -280,7 +337,8 @@
     if (e.key === 'Escape' && !panel.hidden) togglePanel();
   });
 
-  // ---------- перетаскивание / клик по роботу ----------
+  // ---------- взаимодействие с роботом ----------
+  // клик — меню; ПКМ — поболтать; водить мышкой туда-сюда — погладить; зажать и тащить — поднять
   let press = null;
   robotWrap.addEventListener('pointerdown', (e) => {
     if (e.button !== 0) return;
@@ -293,18 +351,58 @@
     const dy = e.screenY - press.y;
     if (!press.dragging && Math.hypot(dx, dy) > 4) {
       press.dragging = true;
+      flags.drag = true;
+      flags.land = false;
+      refreshClass();
+      setLook(0, 0);
       api.dragStart();
     }
     if (press.dragging) api.dragMove(dx, dy);
   });
-  const release = () => {
+  function dropRobot() {
+    flags.drag = false;
+    flags.land = true;
+    refreshClass();
+    setTimeout(() => { flags.land = false; refreshClass(); }, 650);
+    api.dragEnd();
+  }
+  robotWrap.addEventListener('pointerup', () => {
     if (!press) return;
-    if (press.dragging) api.dragEnd();
-    else togglePanel();
+    if (press.dragging) dropRobot();
+    else { api.act('poke'); togglePanel(); }
     press = null;
-  };
-  robotWrap.addEventListener('pointerup', release);
-  robotWrap.addEventListener('pointercancel', () => { if (press && press.dragging) api.dragEnd(); press = null; });
+  });
+  robotWrap.addEventListener('pointercancel', () => {
+    if (press && press.dragging) dropRobot();
+    press = null;
+  });
+  robotWrap.addEventListener('contextmenu', (e) => {
+    e.preventDefault();
+    api.act('chat');
+  });
+
+  // поглаживание: несколько быстрых смен направления над роботом без нажатия
+  const stroke = { lastX: null, dir: 0, turns: [], cooldown: 0 };
+  robotWrap.addEventListener('pointermove', (e) => {
+    if (press) return;
+    const now = performance.now();
+    if (stroke.lastX === null) { stroke.lastX = e.clientX; return; }
+    const dx = e.clientX - stroke.lastX;
+    if (Math.abs(dx) < 4) return;
+    const d = Math.sign(dx);
+    if (stroke.dir && d !== stroke.dir) stroke.turns.push(now);
+    stroke.dir = d;
+    stroke.lastX = e.clientX;
+    stroke.turns = stroke.turns.filter((t) => now - t < 1400);
+    if (stroke.turns.length >= 4 && now > stroke.cooldown) {
+      stroke.turns = [];
+      stroke.cooldown = now + 1200;
+      api.act('pet');
+    }
+  });
+  robotWrap.addEventListener('pointerleave', () => {
+    stroke.lastX = null; stroke.dir = 0; stroke.turns = [];
+  });
 
   // ---------- гимнастика для глаз ----------
   const stage = $('#eyes-stage');
@@ -336,7 +434,8 @@
   // ---------- события из main ----------
   function onState(s) {
     state = s;
-    applyMood(s);
+    applyMood();
+    if (s.mood === 'sleeping') setLook(0, 0);
     if (!panel.hidden) renderPanel(s);
     if (s.eyes.active) {
       if (stage.hidden) startEyesUi();
@@ -347,6 +446,7 @@
   }
 
   api.onState(onState);
+  api.onCursor(onCursor);
   api.onReminder((r) => pushBubble(r));
   api.onCelebrate((r) => pushBubble({ kind: 'happy', text: r.text, actions: [] }, { beepOn: false }));
   api.onEyesStart((r) => {

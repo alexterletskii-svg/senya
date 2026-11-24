@@ -5,118 +5,121 @@ html, body { background: transparent; overflow: hidden; font-family: system-ui, 
 #app { position: fixed; right: 0; bottom: 0; display: inline-flex; flex-direction: column; align-items: flex-end; gap: 8px; padding: 8px; width: max-content; }
 
 /* ---------- робот ---------- */
-#robot-wrap { width: 150px; height: 188px; cursor: grab; touch-action: none; flex: none; }
+#robot-wrap { width: 160px; height: 170px; cursor: grab; touch-action: none; flex: none; }
 #robot-wrap:active { cursor: grabbing; }
-#robot { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 2px 3px rgba(0,0,0,.25)); }
+#robot { width: 100%; height: 100%; overflow: visible; filter: drop-shadow(0 3px 5px rgba(20, 10, 60, .28)); }
 
-#robot .eyes, #robot .brows, #robot .mouth, #robot .keyboard, #robot .hat-g, #robot .sparkles, #robot .zzz { display: none; }
-#robot .eyes-open, #robot .mouth-smile { display: inline; }
-#robot .eye, #robot .arm, #robot .head, #robot .bot, #robot .antenna, #robot .torso, #robot .lights circle, #robot .shadow, #robot .sp, #robot .z {
-  transform-box: fill-box;
-}
-#robot .eye { transform-origin: 50% 50%; }
-#robot .arm { transform-origin: 50% 0%; }
-#robot .head { transform-origin: 50% 100%; }
+#robot .eyes, #robot .lids, #robot .scan, #robot .tear, #robot .hat-g, #robot .sparkles, #robot .zzz, #robot .hearts { display: none; }
+#robot .eyes-open { display: inline; }
+#robot * { transform-box: fill-box; }
+#robot .hop, #robot .bot, #robot .head { transform-origin: 50% 50%; }
+#robot .fin-l { transform-origin: 100% 50%; }
+#robot .fin-r { transform-origin: 0% 50%; }
 #robot .antenna { transform-origin: 50% 100%; }
-#robot .bot { transform-origin: 50% 100%; }
-#robot .torso { transform-origin: 50% 0%; }
-#robot .shadow { transform-origin: 50% 50%; }
-#robot .sp, #robot .z { transform-origin: 50% 50%; }
-
+#robot .eye, #robot .heart, #robot .fh, #robot .sp, #robot .z { transform-origin: 50% 50%; }
 #robot.hat .hat-g { display: inline; }
 #robot.hat .antenna { display: none; }
+#robot:hover .bulb { filter: brightness(1.4) drop-shadow(0 0 4px #ffb84d); }
 
 /* --- бодрый --- */
-#robot.mood-energetic .bot { animation: float 3.2s ease-in-out infinite; }
-#robot.mood-energetic .antenna { animation: wiggle 1.4s ease-in-out infinite; }
-#robot.mood-energetic .bulb { animation: bulb 1.1s ease-in-out infinite; }
-#robot.mood-energetic .eye { animation: blink 4.5s infinite; }
-#robot.mood-energetic .arm-l { animation: swing-l 3.2s ease-in-out infinite; }
-#robot.mood-energetic .arm-r { animation: swing-r 3.2s ease-in-out infinite; }
-#robot.mood-energetic .lights circle { animation: light 1.6s infinite; }
-#robot.mood-energetic .lights circle:nth-child(2) { animation-delay: .5s; }
-#robot.mood-energetic .lights circle:nth-child(3) { animation-delay: 1s; }
+#robot.mood-energetic .bot { animation: float 3.4s ease-in-out infinite; }
+#robot.mood-energetic .fin-l { animation: flap-l 1.3s ease-in-out infinite; }
+#robot.mood-energetic .fin-r { animation: flap-r 1.3s ease-in-out infinite; }
+#robot.mood-energetic .antenna { animation: wiggle 1.6s ease-in-out infinite; }
+#robot.mood-energetic .bulb { animation: bulb 1.2s ease-in-out infinite; }
+#robot.mood-energetic .eye { animation: blink 5s infinite; }
+#robot.mood-energetic .eye-r.wink { animation: wink .6s ease-in-out; }
 
 /* --- сосредоточенный --- */
-#robot.mood-focused .eyes-open { display: inline; }
-#robot.mood-focused .eye { transform: scaleY(.38); }
-#robot.mood-focused .mouth-smile { display: none; }
-#robot.mood-focused .mouth-flat { display: inline; }
-#robot.mood-focused .keyboard { display: inline; }
-#robot.mood-focused .arm-l { animation: type 0.32s ease-in-out infinite alternate; }
-#robot.mood-focused .arm-r { animation: type 0.32s ease-in-out infinite alternate-reverse; }
-#robot.mood-focused .lights circle { animation: light .5s infinite; }
-#robot.mood-focused .lights circle:nth-child(2) { animation-delay: .17s; }
-#robot.mood-focused .lights circle:nth-child(3) { animation-delay: .34s; }
-#robot.mood-focused .bot { animation: focus-bob 1.2s ease-in-out infinite; }
-#robot.mood-focused .antenna { animation: wiggle 2.4s ease-in-out infinite; }
+#robot.mood-focused .bot { animation: float-small 4.6s ease-in-out infinite; }
+#robot.mood-focused .eye { transform: scaleY(.34); }
+#robot.mood-focused .scan { display: inline; animation: scan 2.2s linear infinite; }
+#robot.mood-focused .fin-l { animation: buzz .25s linear infinite alternate; }
+#robot.mood-focused .fin-r { animation: buzz .25s linear infinite alternate-reverse; }
+#robot.mood-focused .antenna { animation: wiggle 2.8s ease-in-out infinite; }
 
 /* --- грустный --- */
-#robot.mood-sad .eyes-open { display: inline; opacity: .55; }
-#robot.mood-sad .eye { transform: translateY(4px) scaleY(.7); }
-#robot.mood-sad .brows { display: inline; }
-#robot.mood-sad .mouth-smile { display: none; }
-#robot.mood-sad .mouth-sad { display: inline; opacity: .6; }
-#robot.mood-sad .screen { fill: #0c1620; }
-#robot.mood-sad .head { transform: translateY(6px) rotate(-3deg); }
-#robot.mood-sad .torso { transform: scaleY(.95); }
-#robot.mood-sad .arm-l { transform: translateY(5px) rotate(7deg); }
-#robot.mood-sad .arm-r { transform: translateY(5px) rotate(-7deg); }
-#robot.mood-sad .lights { opacity: .3; }
-#robot.mood-sad .antenna { transform: rotate(-22deg) translateY(6px); }
-#robot.mood-sad .bulb { fill: #7a8696; }
-#robot.mood-sad .bot { animation: sad-sway 4.5s ease-in-out infinite; }
+#robot.mood-sad .bot { transform: translateY(10px); animation: sad-sway 4.5s ease-in-out infinite; }
+#robot.mood-sad .head { transform: rotate(-4deg); }
+#robot.mood-sad .eyes-open { opacity: .6; transform: translateY(8px); }
+#robot.mood-sad .lids { display: inline; }
+#robot.mood-sad .tear { display: inline; animation: tear 2.6s ease-in infinite; }
+#robot.mood-sad .fin-l { transform: rotate(-28deg); }
+#robot.mood-sad .fin-r { transform: rotate(28deg); }
+#robot.mood-sad .antenna { transform: rotate(-30deg); }
+#robot.mood-sad .bulb { fill: #8a8fa0; }
 
 /* --- радостный --- */
-#robot.mood-happy .eyes-open, #robot.mood-happy .mouth-smile { display: none; }
-#robot.mood-happy .eyes-happy, #robot.mood-happy .mouth-happy { display: inline; }
+#robot.mood-happy .eyes-open { display: none; }
+#robot.mood-happy .eyes-happy { display: inline; }
 #robot.mood-happy .sparkles { display: inline; }
 #robot.mood-happy .bot { animation: jump .62s ease-in-out infinite; }
-#robot.mood-happy .shadow { animation: shadow-jump .62s ease-in-out infinite; }
-#robot.mood-happy .arm-l { animation: cheer-l .31s ease-in-out infinite alternate; }
-#robot.mood-happy .arm-r { animation: cheer-r .31s ease-in-out infinite alternate; }
-#robot.mood-happy .lights circle { animation: light .25s infinite; }
-#robot.mood-happy .lights circle:nth-child(2) { animation-delay: .08s; }
-#robot.mood-happy .lights circle:nth-child(3) { animation-delay: .16s; }
+#robot.mood-happy .fin-l { animation: flap-l .3s ease-in-out infinite; }
+#robot.mood-happy .fin-r { animation: flap-r .3s ease-in-out infinite; }
 #robot.mood-happy .bulb { animation: bulb .3s infinite; }
 #robot.mood-happy .sp { animation: sparkle .8s ease-in-out infinite; }
 #robot.mood-happy .s2 { animation-delay: .25s; }
 #robot.mood-happy .s3 { animation-delay: .5s; }
 
+/* --- любовь --- */
+#robot.mood-love .eyes-open { display: none; }
+#robot.mood-love .eyes-love { display: inline; }
+#robot.mood-love .hearts { display: inline; }
+#robot.mood-love .bot { animation: sway 2s ease-in-out infinite; }
+#robot.mood-love .heart { animation: beat .7s ease-in-out infinite; }
+#robot.mood-love .fin-l { animation: flap-l .8s ease-in-out infinite; }
+#robot.mood-love .fin-r { animation: flap-r .8s ease-in-out infinite; }
+#robot.mood-love .fh { animation: rise 2.2s ease-out infinite; }
+#robot.mood-love .fh2 { animation-delay: .7s; }
+#robot.mood-love .fh3 { animation-delay: 1.4s; }
+
 /* --- спящий --- */
-#robot.mood-sleeping .eyes-open, #robot.mood-sleeping .mouth-smile { display: none; }
-#robot.mood-sleeping .eyes-closed, #robot.mood-sleeping .mouth-sleep { display: inline; }
+#robot.mood-sleeping .eyes-open { display: none; }
+#robot.mood-sleeping .eyes-closed { display: inline; }
 #robot.mood-sleeping .zzz { display: inline; }
-#robot.mood-sleeping .head { transform: rotate(7deg) translateY(4px); }
-#robot.mood-sleeping .antenna { transform: rotate(28deg); }
-#robot.mood-sleeping .bulb { fill: #6b7686; }
-#robot.mood-sleeping .lights circle { animation: light 4s infinite; opacity: .4; }
-#robot.mood-sleeping .screen { fill: #0e1a26; }
-#robot.mood-sleeping .bot { animation: breathe 4s ease-in-out infinite; }
-#robot.mood-sleeping .arm-l { transform: rotate(5deg); }
-#robot.mood-sleeping .arm-r { transform: rotate(-5deg); }
+#robot.mood-sleeping .head { transform: rotate(5deg); }
+#robot.mood-sleeping .antenna { transform: rotate(26deg); }
+#robot.mood-sleeping .bulb { fill: #6b7080; }
+#robot.mood-sleeping .bot { animation: breathe 4.2s ease-in-out infinite; }
+#robot.mood-sleeping .fin-l { transform: rotate(-14deg); }
+#robot.mood-sleeping .fin-r { transform: rotate(14deg); }
 #robot.mood-sleeping .z { animation: zfloat 3s ease-in infinite; opacity: 0; }
 #robot.mood-sleeping .z2 { animation-delay: 1s; }
 #robot.mood-sleeping .z3 { animation-delay: 2s; }
 
-@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-4px); } }
-@keyframes focus-bob { 0%,100% { transform: translateY(0); } 50% { transform: translateY(1.5px); } }
-@keyframes breathe { 0%,100% { transform: scale(1); } 50% { transform: scale(1.02, 1.015); } }
-@keyframes sad-sway { 0%,100% { transform: translateY(2px) rotate(-.8deg); } 50% { transform: translateY(3px) rotate(.8deg); } }
-@keyframes wiggle { 0%,100% { transform: rotate(-7deg); } 50% { transform: rotate(7deg); } }
-@keyframes bulb { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.5) drop-shadow(0 0 4px #ffd166); } }
+/* --- подняли (перетаскивание) --- */
+#robot.drag .eyes { display: none; }
+#robot.drag .eyes-open { display: inline; opacity: 1; transform: scale(1.18); }
+#robot.drag .eye { animation: none; transform: none; }
+#robot.drag .lids, #robot.drag .tear, #robot.drag .scan { display: none; }
+#robot.drag .bot { transform: none; animation: dangle .3s ease-in-out infinite; }
+#robot.drag .head { transform: none; }
+#robot.drag .fin-l { animation: flap-l .22s ease-in-out infinite; transform: none; }
+#robot.drag .fin-r { animation: flap-r .22s ease-in-out infinite; transform: none; }
+#robot.land .hop { animation: hop .55s ease-out; }
+
+@keyframes float { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-8px); } }
+@keyframes float-small { 0%,100% { transform: translateY(0); } 50% { transform: translateY(-3px); } }
+@keyframes breathe { 0%,100% { transform: translateY(0) scale(1); } 50% { transform: translateY(-3px) scale(1.02); } }
+@keyframes sad-sway { 0%,100% { transform: translateY(10px) rotate(-.8deg); } 50% { transform: translateY(12px) rotate(.8deg); } }
+@keyframes sway { 0%,100% { transform: translateY(-2px) rotate(-3deg); } 50% { transform: translateY(-8px) rotate(3deg); } }
+@keyframes dangle { 0%,100% { transform: rotate(-5deg); } 50% { transform: rotate(5deg); } }
+@keyframes wiggle { 0%,100% { transform: rotate(-8deg); } 50% { transform: rotate(8deg); } }
+@keyframes bulb { 0%,100% { filter: brightness(1); } 50% { filter: brightness(1.5) drop-shadow(0 0 4px #ffb84d); } }
 @keyframes blink { 0%,92%,100% { transform: scaleY(1); } 95% { transform: scaleY(.08); } }
-@keyframes swing-l { 0%,100% { transform: rotate(2deg); } 50% { transform: rotate(-3deg); } }
-@keyframes swing-r { 0%,100% { transform: rotate(-2deg); } 50% { transform: rotate(3deg); } }
-@keyframes type { from { transform: translateY(0); } to { transform: translateY(-5px); } }
-@keyframes light { 0%,100% { opacity: 1; } 50% { opacity: .2; } }
+@keyframes wink { 0%,100% { transform: scaleY(1); } 40%,60% { transform: scaleY(.08); } }
+@keyframes flap-l { 0%,100% { transform: rotate(-6deg); } 50% { transform: rotate(14deg); } }
+@keyframes flap-r { 0%,100% { transform: rotate(6deg); } 50% { transform: rotate(-14deg); } }
+@keyframes buzz { from { transform: rotate(-2deg); } to { transform: rotate(2deg); } }
+@keyframes scan { from { transform: translateY(0); } to { transform: translateY(85px); } }
+@keyframes tear { 0% { transform: translateY(0); opacity: 0; } 15% { opacity: 1; } 100% { transform: translateY(28px); opacity: 0; } }
 @keyframes jump {
-  0%,100% { transform: translateY(0) scale(1.04, .94); }
+  0%,100% { transform: translateY(0) scale(1.05, .94); }
   45% { transform: translateY(-26px) scale(.97, 1.04); }
 }
-@keyframes shadow-jump { 0%,100% { transform: scale(1); opacity: .22; } 45% { transform: scale(.65); opacity: .1; } }
-@keyframes cheer-l { from { transform: rotate(145deg); } to { transform: rotate(165deg); } }
-@keyframes cheer-r { from { transform: rotate(-145deg); } to { transform: rotate(-165deg); } }
+@keyframes hop { 0% { transform: translateY(-22px); } 40% { transform: translateY(0) scale(1.06, .92); } 70% { transform: translateY(-6px); } 100% { transform: translateY(0); } }
+@keyframes beat { 0%,100% { transform: scale(1); } 50% { transform: scale(1.2); } }
+@keyframes rise { 0% { transform: translateY(18px) scale(.4); opacity: 0; } 25% { opacity: 1; } 100% { transform: translateY(-34px) scale(1); opacity: 0; } }
 @keyframes sparkle { 0%,100% { transform: scale(.3) rotate(0); opacity: 0; } 50% { transform: scale(1) rotate(45deg); opacity: 1; } }
 @keyframes zfloat { 0% { transform: translate(0, 10px) scale(.6); opacity: 0; } 25% { opacity: 1; } 100% { transform: translate(8px, -14px) scale(1.1); opacity: 0; } }
 
@@ -154,6 +157,7 @@ button:disabled { opacity: .45; cursor: default; }
 .pomo-phase { text-align: center; color: #9db0c6; font-size: 12px; }
 .row { display: flex; gap: 6px; flex-wrap: wrap; }
 .row > * { flex: 1; }
+.row.quad > * { flex: 1 1 45%; }
 .task-add { display: flex; gap: 6px; }
 .task-add input { flex: 1; min-width: 0; }
 input[type=text], input[type=number] { font: inherit; background: #1a2332; color: #e8eef6; border: 1px solid #364760; border-radius: 9px; padding: 6px 9px; outline: none; user-select: text; }

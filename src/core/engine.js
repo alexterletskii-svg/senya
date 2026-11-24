@@ -25,6 +25,8 @@ const DEFAULT_SETTINGS = {
 
 const EYES_SECONDS = 20;
 const HAPPY_MS = 5000;
+const LOVE_MS = 5000;
+const AWAKE_ON_TOUCH_MS = 20000;
 const AWAKE_ON_ALERT_MS = 12000;
 const MAX_TICK_SEC = 5; // больший разрыв считаем засыпанием компьютера
 const SNOOZE_BREAK_MIN = 5;
@@ -67,6 +69,7 @@ class Engine extends EventEmitter {
     this._lastIdle = 0;
     this._sleeping = false;
     this._happyUntil = 0;
+    this._loveUntil = 0;
     this._awakeUntil = 0;
     this._reminderSeq = 1;
 
@@ -190,7 +193,9 @@ class Engine extends EventEmitter {
 
   /** Пользователь размялся. */
   ackBreak() {
+    const wasSad = this.missedBreaks >= MISSED_FOR_SAD;
     this._restTaken(true);
+    if (wasSad) this._startLove();
     this._emitState();
   }
 
@@ -374,11 +379,43 @@ class Engine extends EventEmitter {
     }
   }
 
+  // ---------- общение ----------
+
+  _startLove() {
+    const now = this._now();
+    const already = now < this._loveUntil;
+    this._loveUntil = now + LOVE_MS;
+    this._awakeUntil = Math.max(this._awakeUntil, now + AWAKE_ON_TOUCH_MS);
+    if (!already) this.emit('reminder', this._mk('love', pick('love', this._rng), []));
+  }
+
+  /** Погладили. */
+  pet() {
+    this._startLove();
+    this._emitState();
+  }
+
+  /** Тыкнули: будит спящего Робика. */
+  poke() {
+    if (this.getMood() !== 'sleeping') return;
+    this._awakeUntil = this._now() + AWAKE_ON_TOUCH_MS;
+    this.emit('reminder', this._mk('poke', pick('poke', this._rng), []));
+    this._emitState();
+  }
+
+  /** Поболтать. */
+  chat() {
+    this._awakeUntil = Math.max(this._awakeUntil, this._now() + AWAKE_ON_TOUCH_MS);
+    this.emit('reminder', this._mk('chat', pick('chat', this._rng), []));
+    this._emitState();
+  }
+
   // ---------- настроение и состояние ----------
 
   getMood() {
     const now = this._now();
     if (this._sleeping && now >= this._awakeUntil) return 'sleeping';
+    if (now < this._loveUntil) return 'love';
     if (now < this._happyUntil) return 'happy';
     if (this.missedBreaks >= MISSED_FOR_SAD) return 'sad';
     if (this.pomo.phase === 'work') return 'focused';
@@ -416,6 +453,9 @@ class Engine extends EventEmitter {
 
   dispatch(action, payload) {
     switch (action) {
+      case 'pet': return this.pet();
+      case 'poke': return this.poke();
+      case 'chat': return this.chat();
       case 'break:ack': return this.ackBreak();
       case 'break:snooze': return this.snoozeBreak();
       case 'eyes:start': return this.startEyes();
