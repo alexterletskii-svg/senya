@@ -1,6 +1,5 @@
 'use strict';
 
-// Микро-разминки. anim — какую анимацию показывает Сеня (классы ex-* в style.css).
 const EXERCISES = [
   { id: 'neck-tilt', title: 'Наклоны головы', anim: 'tilt', seconds: 30, steps: 'Медленно наклоняй голову к плечу: влево, потом вправо. Плечи опущены, дыши ровно.' },
   { id: 'neck-turn', title: 'Повороты головы', anim: 'turn', seconds: 30, steps: 'Поворачивай голову влево и вправо, взгляд за плечо. Без рывков.' },
@@ -17,7 +16,6 @@ function getExercise(id) {
   return EXERCISES.find((e) => e.id === id) || null;
 }
 
-// Случайное упражнение, не такое же, как прошлое. Если задан id — именно оно.
 function pickExercise(id, lastId, rng = Math.random) {
   const wanted = id && getExercise(id);
   if (wanted) return wanted;

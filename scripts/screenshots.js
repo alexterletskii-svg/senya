@@ -1,6 +1,4 @@
 'use strict';
-// Рендерит Сеню в PNG для всех состояний (визуальная проверка без запуска всего приложения).
-// Запуск: SHOTS_DIR=shots xvfb-run -a npx electron --no-sandbox scripts/screenshots.js
 const path = require('node:path');
 const fs = require('node:fs');
 const { app, BrowserWindow, ipcMain } = require('electron');

@@ -1,7 +1,5 @@
 'use strict';
 
-// Голос Сени: синтезированные писки и свисты (WebAudio), без файлов и без речи.
-// Каждая эмоция — своя «фраза»; текст в облачке сопровождается бормотанием.
 window.Sound = (() => {
   let ctx = null;
   let master = null;
@@ -19,7 +17,6 @@ window.Sound = (() => {
     return ctx;
   }
 
-  // Один «писк»: частота плавно скользит f0 → f1
   function tone(c, { f0, f1 = f0, at = 0, dur = 0.1, type = 'square', gain = 0.12, vibrato = 0 }) {
     const t = c.currentTime + at;
     const osc = c.createOscillator();
@@ -45,33 +42,24 @@ window.Sound = (() => {
   }
 
   const PHRASES = {
-    // быстрая восходящая трель
     happy: [
       { f0: 700, f1: 1300, at: 0, dur: 0.08 }, { f0: 900, f1: 1600, at: 0.09, dur: 0.08 },
       { f0: 1200, f1: 2100, at: 0.18, dur: 0.12, type: 'triangle' },
     ],
-    // тоскливое падающее «у-у-у»
     sad: [
       { f0: 520, f1: 300, at: 0, dur: 0.28, type: 'triangle', gain: 0.14 },
       { f0: 340, f1: 190, at: 0.3, dur: 0.4, type: 'triangle', gain: 0.14 },
     ],
-    // тёплое вибрато
     love: [
       { f0: 780, f1: 980, at: 0, dur: 0.16, type: 'sine', gain: 0.16, vibrato: 30 },
       { f0: 980, f1: 760, at: 0.17, dur: 0.16, type: 'sine', gain: 0.16, vibrato: 30 },
       { f0: 900, f1: 1180, at: 0.34, dur: 0.22, type: 'sine', gain: 0.16, vibrato: 40 },
     ],
-    // тихое сопение
     sleep: [{ f0: 200, f1: 130, at: 0, dur: 0.5, type: 'sine', gain: 0.08 }],
-    // «проснулся»: свист вверх
     wake: [{ f0: 300, f1: 1100, at: 0, dur: 0.22, type: 'sine', gain: 0.14 }, { f0: 1100, f1: 900, at: 0.24, dur: 0.08, type: 'square', gain: 0.08 }],
-    // «м?»
     poke: [{ f0: 700, f1: 480, at: 0, dur: 0.1 }, { f0: 480, f1: 900, at: 0.12, dur: 0.14 }],
-    // двойной писк-напоминание
     alert: [{ f0: 1000, at: 0, dur: 0.07 }, { f0: 1250, at: 0.12, dur: 0.09 }],
-    // сосредоточился: низкий щелчок-«бип»
     work: [{ f0: 440, f1: 660, at: 0, dur: 0.06 }, { f0: 660, f1: 880, at: 0.08, dur: 0.06 }],
-    // готово
     done: [{ f0: 880, at: 0, dur: 0.07 }, { f0: 1320, at: 0.09, dur: 0.14, type: 'triangle' }],
   };
 
@@ -82,10 +70,9 @@ window.Sound = (() => {
     try {
       const c = ensure();
       for (const n of seq) tone(c, n);
-    } catch { /* звук недоступен */ }
+    } catch {  }
   }
 
-  // «Бормотание»: на каждую букву — блип своей высоты (детерминированно от буквы)
   let babbleTimer = 0;
   function babble(text, { onEnd } = {}) {
     clearTimeout(babbleTimer);
@@ -105,7 +92,7 @@ window.Sound = (() => {
         total += step;
         i += 1;
       }
-    } catch { /* звук недоступен */ }
+    } catch {  }
     babbleTimer = setTimeout(() => { if (onEnd) onEnd(); }, total * 1000);
     return total * 1000;
   }

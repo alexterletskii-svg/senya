@@ -1,10 +1,5 @@
 'use strict';
 
-// Разбор задачи с русским указанием времени:
-//   «через 10 минут позвонить маме»
-//   «созвон в 15:30», «завтра в 9 утра отчёт», «в 18 забрать посылку»
-// Возвращает { text, dueAt } — dueAt в мс или null.
-
 const WORD_NUMBERS = {
   один: 1, одну: 1, одна: 1, два: 2, две: 2, три: 3, четыре: 4, пять: 5,
   шесть: 6, семь: 7, восемь: 8, девять: 9, десять: 10, пятнадцать: 15,
@@ -48,7 +43,6 @@ function capitalize(s) {
   return s ? s[0].toUpperCase() + s.slice(1) : s;
 }
 
-// ---- повторяющиеся задачи ----
 const WEEKDAY_WORD = '(понедельник[а-я]*|вторник[а-я]*|сред[а-я]*|четверг[а-я]*|пятниц[а-я]*|суббот[а-я]*|воскресень[а-я]*)';
 const REP_WEEKDAYS = new RegExp('(?:^|[\\s,])(?:по\\s+будням|каждый\\s+будний\\s+день|в\\s+будни)' + END, 'iu');
 const REP_DAILY = new RegExp('(?:^|[\\s,])(?:каждый\\s+день|ежедневно)' + END, 'iu');
@@ -60,7 +54,6 @@ const REP_INTERVAL = new RegExp(
 const DOW_PREFIX = [['воскр', 0], ['понед', 1], ['вторн', 2], ['сред', 3], ['четв', 4], ['пятн', 5], ['субб', 6]];
 const DOW_SHORT = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
 
-// Следующее срабатывание повторяющейся задачи строго после момента from.
 function nextDue(rep, from) {
   if (rep.kind === 'interval') return from + rep.everyMin * MIN;
   const [h, m] = rep.time.split(':').map(Number);
@@ -124,7 +117,6 @@ function parseTask(raw, now = Date.now()) {
   let dueAt = null;
   let repeat = null;
 
-  // 0. Повторение: «каждый день в 9», «по будням», «каждый понедельник», «каждые 2 часа»
   const pr = parseRepeat(text);
   if (pr) {
     repeat = pr.rep;
@@ -153,7 +145,6 @@ function parseTask(raw, now = Date.now()) {
     return { text: cleanedRep || capitalize(original), dueAt, repeat };
   }
 
-  // 1. Относительное время: «через N единиц»
   const rel = REL.exec(text);
   if (rel) {
     const [full, numRaw, unit] = rel;
@@ -173,7 +164,6 @@ function parseTask(raw, now = Date.now()) {
     if (ok) text = text.replace(full, ' ');
   }
 
-  // 2. День + абсолютное время (только если не нашли относительное)
   if (dueAt === null) {
     let dayShift = null;
     const dw = DAYWORD.exec(text);
@@ -191,7 +181,6 @@ function parseTask(raw, now = Date.now()) {
       const atStart = text.slice(0, abs.index).trim() === '';
       const atEnd = text.slice(abs.index + full.length).trim() === '';
       const explicit = mStr !== undefined || part !== undefined || /час|ч$/i.test(full.trim());
-      // «в 2 магазинах» — не время; «в 18 забрать посылку» — время (в начале)
       const plausible = h <= 24 && m < 60 && (explicit || atStart || atEnd || dayShift !== null);
       if (plausible) {
         const p = part ? part.toLowerCase() : null;
@@ -210,13 +199,11 @@ function parseTask(raw, now = Date.now()) {
       }
     }
     if (!timeUsed && dayShift !== null && dayShift > 0) {
-      // «завтра купить хлеб» — на 9:00 указанного дня
       const d = new Date(now);
       d.setHours(9, 0, 0, 0);
       d.setDate(d.getDate() + dayShift);
       dueAt = d.getTime();
     } else if (!timeUsed && dayShift === 0) {
-      // «сегодня» без времени — просто слово, возвращаем в текст
       text = text + ' ' + (dw ? dw[1] : '');
     }
   }

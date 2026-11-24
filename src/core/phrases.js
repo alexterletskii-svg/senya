@@ -1,6 +1,5 @@
 'use strict';
 
-// Фразы Сени. Несколько вариантов на каждый случай, чтобы не надоедало.
 const PHRASES = {
   greeting: [
     'Привет! Я Сеня. Работаем?',
@@ -113,7 +112,6 @@ const PHRASES = {
 
 const lastIndex = new Map();
 
-// Выбор фразы без немедленного повтора. rng — функция 0..1 (для тестов).
 function pick(kind, rng = Math.random) {
   const list = PHRASES[kind];
   if (!list || list.length === 0) return '';

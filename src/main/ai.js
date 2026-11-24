@@ -1,9 +1,5 @@
 'use strict';
 
-// Разговор с Сеней через DeepSeek (OpenAI-совместимый API).
-// Ключ берётся только из переменной окружения DEEPSEEK_API_KEY.
-// Необязательно: DEEPSEEK_BASE_URL (по умолчанию https://api.deepseek.com), DEEPSEEK_MODEL (deepseek-chat).
-
 const SYSTEM_PROMPT =
   'Ты — Сеня, маленький парящий робот-напарник на рабочем столе пользователя. ' +
   'Говоришь по-русски, коротко (1–3 предложения), тепло и с лёгким юмором. ' +
@@ -11,8 +7,22 @@ const SYSTEM_PROMPT =
   'Если не знаешь ответа — честно скажи. Не выдумывай факты о пользователе. ' +
   'У тебя нет рук и ног, ты умеешь парить и показывать эмоции глазами.';
 
-const MAX_HISTORY = 8; // последних реплик (пар «вопрос-ответ»)
+const MAX_HISTORY = 8;
 const TIMEOUT_MS = 20000;
+
+function loadEnv(base = process.env) {
+  let embedded = {};
+  try {
+    embedded = require('./embedded.json');
+  } catch {
+    embedded = {};
+  }
+  const env = { ...base };
+  for (const [k, v] of Object.entries(embedded)) {
+    if (v && !(env[k] && String(env[k]).trim())) env[k] = v;
+  }
+  return env;
+}
 
 function isConfigured(env = process.env) {
   return Boolean(env.DEEPSEEK_API_KEY && env.DEEPSEEK_API_KEY.trim());
@@ -28,7 +38,7 @@ function buildMessages({ history = [], userText, context = '' }) {
 }
 
 class Chat {
-  constructor({ env = process.env, fetchFn = globalThis.fetch } = {}) {
+  constructor({ env = loadEnv(), fetchFn = globalThis.fetch } = {}) {
     this.env = env;
     this.fetchFn = fetchFn;
     this.history = [];
@@ -38,7 +48,6 @@ class Chat {
     return isConfigured(this.env);
   }
 
-  /** Возвращает { ok, text }. Не бросает исключений: Сеня всегда может что-то ответить. */
   async ask(userText, context = '') {
     const text = String(userText || '').trim().slice(0, 1000);
     if (!text) return { ok: false, text: 'Я весь внимание. Спроси что-нибудь!' };
@@ -87,4 +96,4 @@ class Chat {
   }
 }
 
-module.exports = { Chat, buildMessages, isConfigured, SYSTEM_PROMPT };
+module.exports = { loadEnv, Chat, buildMessages, isConfigured, SYSTEM_PROMPT };

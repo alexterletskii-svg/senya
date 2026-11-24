@@ -6,7 +6,6 @@ function makeEngine(saved) {
   const e = new Engine({ now: () => clock.t, rng: () => 0.1, saved });
   const reminders = [];
   e.on('reminder', (r) => reminders.push(r));
-  // прокрутка времени секундными тиками; idle — функция состояния простоя
   const advance = (sec, idle = 0) => {
     for (let i = 0; i < sec; i++) {
       clock.t += 1000;
