@@ -1,7 +1,7 @@
 'use strict';
 
 (() => {
-  const api = window.robik;
+  const api = window.senya;
   const $ = (sel, root = document) => root.querySelector(sel);
   const el = (tag, props = {}, children = []) => {
     const n = document.createElement(tag);
@@ -33,11 +33,13 @@
   new ResizeObserver(reportLayout).observe(appEl);
 
   // ---------- настроение ----------
-  const flags = { drag: false, land: false };
+  const flags = { drag: false, land: false, talk: false };
   function refreshClass() {
     if (!state) return;
     robot.setAttribute('class',
-      `mood-${state.mood}${state.hardHat ? ' hat' : ''}${flags.drag ? ' drag' : ''}${flags.land ? ' land' : ''}`);
+      `mood-${state.mood}${state.hardHat ? ' hat' : ''}${flags.drag ? ' drag' : ''}${flags.land ? ' land' : ''}` +
+      `${flags.talk ? ' talk' : ''}${state.dnd && state.dnd.active ? ' quiet' : ''}` +
+      `${state.exercise && state.exercise.active ? ` ex-${state.exercise.anim}` : ''}`);
   }
   function applyMood() { refreshClass(); }
 
@@ -92,33 +94,38 @@
   }
   idleLoop();
 
-  // ---------- звук ----------
-  let audio = null;
-  function beep() {
-    if (!state || !state.settings.sound) return;
-    try {
-      audio = audio || new AudioContext();
-      const t = audio.currentTime;
-      [660, 880].forEach((f, i) => {
-        const o = audio.createOscillator();
-        const g = audio.createGain();
-        o.type = 'sine';
-        o.frequency.value = f;
-        g.gain.setValueAtTime(0.0001, t + i * 0.14);
-        g.gain.exponentialRampToValueAtTime(0.12, t + i * 0.14 + 0.02);
-        g.gain.exponentialRampToValueAtTime(0.0001, t + i * 0.14 + 0.2);
-        o.connect(g).connect(audio.destination);
-        o.start(t + i * 0.14);
-        o.stop(t + i * 0.14 + 0.22);
-      });
-    } catch { /* звук недоступен */ }
+  // ---------- звук и «речь» ----------
+  const ALERT_KINDS = ['break', 'eyes', 'water', 'posture', 'task', 'pomodoro', 'goal'];
+  let talkTimer = 0;
+
+  function talk(text) {
+    const ms = Sound.babble(text) || Math.min(String(text).length * 55, 2500);
+    flags.talk = true;
+    refreshClass();
+    clearTimeout(talkTimer);
+    talkTimer = setTimeout(() => { flags.talk = false; refreshClass(); }, ms);
+  }
+
+  function soundFor(r) {
+    if (ALERT_KINDS.includes(r.kind)) Sound.play('alert');
+    if (['eyes-done', 'exercise-done', 'goal'].includes(r.kind)) Sound.play('done');
+    if (r.kind === 'poke') Sound.play('poke');
+  }
+
+  function moodSound(prev, mood) {
+    if (mood === 'happy') Sound.play('happy');
+    else if (mood === 'sad') Sound.play('sad');
+    else if (mood === 'love') Sound.play('love');
+    else if (mood === 'sleeping') Sound.play('sleep');
+    else if (mood === 'focused') Sound.play('work');
+    else if (prev === 'sleeping') Sound.play('wake');
   }
 
   // ---------- облачка ----------
   const bubblesEl = $('#bubbles');
   const queue = [];
   let current = null;
-  const TTL = { break: 60000, eyes: 45000, water: 14000, posture: 14000, pomodoro: 9000, wake: 6000, hello: 6000, 'task-added': 3500, 'eyes-done': 4500, happy: 4500, love: 3500, poke: 4000, chat: 9000, task: 0 };
+  const TTL = { break: 60000, eyes: 45000, water: 14000, posture: 14000, pomodoro: 9000, wake: 6000, hello: 6000, 'task-added': 3500, 'eyes-done': 4500, 'exercise-done': 5000, goal: 7000, happy: 4500, love: 3500, poke: 4000, chat: 9000, task: 0 };
 
   function showNext() {
     if (current || queue.length === 0) return;
@@ -148,6 +155,7 @@
       el('div', { class: 'text', text: r.text }),
       actions.length ? el('div', { class: 'actions' }, actions) : null,
     ]));
+    setTimeout(() => talk(r.text), ALERT_KINDS.includes(r.kind) ? 320 : 0);
     const ttl = TTL[r.kind] === undefined ? 12000 : TTL[r.kind];
     if (ttl > 0) current.timer = setTimeout(closeBubble, ttl);
   }
@@ -165,31 +173,45 @@
     if (i >= 0) queue.splice(i, 1);
     queue.push({ ...r });
     if (queue.length > 5) queue.shift();
-    if (beepOn && !['task-added', 'eyes-done', 'wake', 'hello', 'love', 'poke', 'chat'].includes(r.kind)) beep();
+    if (beepOn) soundFor(r);
     showNext();
   }
 
   // ---------- панель ----------
   const panel = $('#panel');
   const P = {}; // ссылки на живые элементы панели
+  const DOWS = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+  const DND_REASON = { fullscreen: 'полный экран', presentation: 'презентация', call: 'звонок' };
 
   function buildPanel() {
+    P.dndChip = el('span', { class: 'chip' });
+    P.dndChip.hidden = true;
     P.stats = el('div', { class: 'stats' });
     P.pomoTime = el('div', { class: 'pomo-time', text: '25:00' });
     P.pomoPhase = el('div', { class: 'pomo-phase' });
     P.pomoStart = el('button', { text: 'Старт', onclick: () => api.act(pomoPrimaryAction()) });
     P.pomoSkip = el('button', { class: 'ghost', text: 'Пропуск', onclick: () => api.act('pomo:skip') });
     P.pomoStop = el('button', { class: 'ghost', text: 'Стоп', onclick: () => api.act('pomo:stop') });
+    P.dndBtn = el('button', { class: 'ghost', text: '🔕 Тишина', onclick: () => api.act('dnd:set', state && state.dnd.manual ? 0 : 60) });
 
-    P.input = el('input', { type: 'text', placeholder: 'Задача… напр. «через 20 мин позвонить»', maxlength: '200' });
+    P.input = el('input', { type: 'text', placeholder: 'Задача… «через 20 мин позвонить»', maxlength: '200' });
     P.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') addTask(); });
     P.taskList = el('div', { class: 'tasks' });
     P.clearDone = el('button', { class: 'ghost', text: 'Убрать выполненные', onclick: () => api.act('task:clear-done') });
+
+    P.ask = el('input', { type: 'text', placeholder: 'Спроси Сеню о чём угодно…', maxlength: '300' });
+    P.ask.addEventListener('keydown', (e) => { if (e.key === 'Enter') askAi(); });
+    P.askHint = el('div', { class: 'hint' });
+
+    P.streak = el('div', { class: 'streak' });
+    P.week = el('div', { class: 'week' });
+    P.weekSum = el('div', { class: 'hint' });
     P.settings = el('div', { class: 'settings' });
 
     panel.replaceChildren(
       el('div', { class: 'p-head' }, [
-        el('b', { text: '🤖 Робик' }),
+        el('b', { text: '🤖 Сеня' }),
+        P.dndChip,
         el('button', { class: 'ghost', text: '✕', title: 'Закрыть меню', onclick: togglePanel }),
       ]),
       P.stats,
@@ -197,22 +219,33 @@
         P.pomoTime, P.pomoPhase,
         el('div', { class: 'row' }, [P.pomoStart, P.pomoSkip, P.pomoStop]),
       ]),
-      el('div', { class: 'row quad' }, [
-        el('button', { class: 'ghost', text: '👀 Гимнастика', onclick: () => api.act('eyes:start') }),
-        el('button', { class: 'ghost', text: '🧘 Размялся', onclick: () => api.act('break:ack') }),
+      el('div', { class: 'grid3' }, [
+        el('button', { class: 'ghost', text: '👀 Глаза', title: 'Гимнастика для глаз', onclick: () => api.act('eyes:start') }),
+        el('button', { class: 'ghost', text: '🤸 Разминка', title: 'Упражнение на 30 секунд', onclick: () => api.act('exercise:start') }),
+        el('button', { class: 'ghost', text: '🧘 Размялся', title: 'Засчитать перерыв', onclick: () => api.act('break:ack') }),
         el('button', { class: 'ghost', text: '💗 Погладить', onclick: () => api.act('pet') }),
         el('button', { class: 'ghost', text: '💬 Поболтать', onclick: () => api.act('chat') }),
+        P.dndBtn,
       ]),
       el('div', { class: 'card' }, [
         el('h3', { text: 'Список дел' }),
         el('div', { class: 'task-add' }, [P.input, el('button', { text: '＋', onclick: addTask })]),
-        el('div', { class: 'hint', text: 'Можно со временем: «в 15:30 созвон», «завтра в 9 отчёт»' }),
+        el('div', { class: 'hint', text: '«в 15:30 созвон», «завтра в 9 отчёт», «каждый день в 9 зарядка», «каждые 2 часа вода»' }),
         P.taskList,
         P.clearDone,
       ]),
+      el('div', { class: 'card' }, [
+        el('h3', { text: 'Спросить Сеню' }),
+        P.ask,
+        P.askHint,
+      ]),
+      el('div', { class: 'card' }, [
+        el('h3', { text: 'Неделя' }),
+        P.streak, P.week, P.weekSum,
+      ]),
       el('details', {}, [el('summary', { text: 'Настройки' }), P.settings]),
       el('div', { class: 'row' }, [
-        el('button', { class: 'ghost', text: 'Спрятать', title: 'Скрыть Робика; вернуть — через иконку в трее', onclick: () => api.act('app:hide') }),
+        el('button', { class: 'ghost', text: 'Спрятать', title: 'Скрыть Сеню; вернуть — через иконку в трее или Ctrl+Alt+S', onclick: () => api.act('app:hide') }),
         el('button', { class: 'danger', text: 'Выход', onclick: () => api.act('app:quit') }),
       ]),
     );
@@ -223,6 +256,13 @@
     if (!v) return;
     api.act('task:add', v);
     P.input.value = '';
+  }
+
+  function askAi() {
+    const v = P.ask.value.trim();
+    if (!v) return;
+    api.act('ai:ask', v);
+    P.ask.value = '';
   }
 
   function pomoPrimaryAction() {
@@ -244,10 +284,21 @@
     return `${d.toLocaleDateString('ru-RU', { day: '2-digit', month: '2-digit' })} ${hm}`;
   }
 
-  let shown = { tasks: '', settings: '' };
+  let shown = { tasks: '', settings: '', week: '' };
 
   function renderPanel(s) {
-    P.stats.textContent = `Сегодня: ☕ ${s.stats.breaks} · 🍅 ${s.stats.pomodoros} · ✅ ${s.stats.tasks}`;
+    const st = s.stats;
+    P.stats.textContent = `Сегодня: ☕ ${st.breaks} · 🤸 ${st.exercises} · 🍅 ${st.pomodoros} · ✅ ${st.tasks} · активен ${st.activeMin} мин`;
+
+    const d = s.dnd;
+    P.dndChip.hidden = !d.active;
+    if (d.active) {
+      P.dndChip.textContent = d.auto ? `🔕 ${DND_REASON[d.reason] || 'тихо'}` : '🔕 тихо';
+      P.dndChip.title = d.auto ? 'Сеня молчит: ' + (DND_REASON[d.reason] || 'авто') : 'Режим «Не беспокоить»';
+    }
+    P.dndBtn.textContent = d.manual
+      ? `🔔 Вернуть${d.untilMs ? ` (ещё ${Math.max(1, Math.round((d.untilMs - Date.now()) / 60000))} мин)` : ''}`
+      : '🔕 Тишина 1 ч';
 
     const p = s.pomodoro;
     P.pomoTime.textContent = p.phase === 'idle' ? fmt(s.settings.workMin * 60) : fmt(p.remainingSec);
@@ -256,12 +307,20 @@
     P.pomoStart.textContent = p.phase === 'idle' ? 'Старт' : p.running ? 'Пауза' : 'Продолжить';
     P.pomoSkip.disabled = P.pomoStop.disabled = p.phase === 'idle';
 
+    P.askHint.textContent = s.ai ? 'Отвечает DeepSeek. Отправляются только твой вопрос и краткая сводка о состоянии, без названий дел.' : 'Для живого общения задай переменную окружения DEEPSEEK_API_KEY и перезапусти Сеню.';
+
     const tj = JSON.stringify(s.tasks);
     if (tj !== shown.tasks) {
       shown.tasks = tj;
       renderTasks(s.tasks);
     }
     P.clearDone.hidden = !s.tasks.some((t) => t.done);
+
+    const wj = JSON.stringify([s.week, s.streak, s.settings.dailyGoal]);
+    if (wj !== shown.week) {
+      shown.week = wj;
+      renderWeek(s);
+    }
 
     const sj = JSON.stringify(s.settings);
     if (sj !== shown.settings && !P.settings.contains(document.activeElement)) {
@@ -270,11 +329,29 @@
     }
   }
 
+  function renderWeek(s) {
+    const goal = s.settings.dailyGoal;
+    const max = Math.max(goal, ...s.week.map((d) => d.breaks), 1);
+    P.streak.textContent = s.streak > 0
+      ? `🔥 Серия: ${s.streak} дн. (цель — ${goal} перерывов в день)`
+      : `Цель дня — ${goal} перерывов. Серия начнётся с первого выполненного дня.`;
+    P.week.replaceChildren(...s.week.map((d, i) => el('div', {
+      class: `wd${i === 6 ? ' today' : ''}${d.goal ? ' goal' : ''}`,
+      title: `${d.date}: перерывов ${d.breaks}, помодоро ${d.pomodoros}, дел ${d.tasks}, активен ${d.activeMin} мин`,
+    }, [
+      el('i', { text: String(d.breaks) }),
+      el('div', { class: 'bar-wrap' }, [el('div', { class: 'bar', style: `height:${Math.round((d.breaks / max) * 44)}px` })]),
+      el('span', { text: DOWS[d.dow] }),
+    ])));
+    const sum = (k) => s.week.reduce((a, d) => a + d[k], 0);
+    P.weekSum.textContent = `За 7 дней: перерывов ${sum('breaks')}, помодоро ${sum('pomodoros')}, дел ${sum('tasks')}, активен ${Math.round(sum('activeMin') / 6) / 10} ч`;
+  }
+
   function renderTasks(tasks) {
     const now = Date.now();
     const sorted = [...tasks].sort((a, b) => (a.done - b.done) || ((a.dueAt || Infinity) - (b.dueAt || Infinity)) || a.id - b.id);
     if (sorted.length === 0) {
-      P.taskList.replaceChildren(el('div', { class: 'empty', text: 'Дел пока нет. Скажи Робику, что запомнить.' }));
+      P.taskList.replaceChildren(el('div', { class: 'empty', text: 'Дел пока нет. Скажи Сене, что запомнить.' }));
       return;
     }
     P.taskList.replaceChildren(...sorted.map((t) => {
@@ -284,7 +361,7 @@
       return el('div', { class: `task${t.done ? ' done' : ''}` }, [
         cb,
         el('span', { class: 't', text: t.text }),
-        t.dueAt ? el('span', { class: `due${!t.done && t.dueAt < now ? ' late' : ''}`, text: `⏰ ${dueLabel(t.dueAt)}` }) : null,
+        t.dueAt ? el('span', { class: `due${!t.done && t.dueAt < now ? ' late' : ''}`, title: t.repeatText || '', text: `${t.repeat ? '🔁' : '⏰'} ${dueLabel(t.dueAt)}` }) : null,
         el('button', { class: 'rm', text: '✕', title: 'Удалить', onclick: () => api.act('task:remove', t.id) }),
       ]);
     }));
@@ -295,24 +372,27 @@
     ['eyesEveryMin', 'Гимнастика глаз, мин'],
     ['waterEveryMin', 'Вода, мин'],
     ['postureEveryMin', 'Осанка, мин'],
+    ['dailyGoal', 'Цель: перерывов в день'],
     ['workMin', 'Pomodoro: работа, мин'],
     ['shortBreakMin', 'Pomodoro: перерыв, мин'],
     ['longBreakMin', 'Pomodoro: длинный, мин'],
     ['idleSleepMin', 'Засыпать после простоя, мин'],
+    ['volume', 'Громкость писков, %'],
   ];
   const SETTING_TOGGLES = [
     ['breakEnabled', 'Напоминать о перерывах'],
     ['eyesEnabled', 'Напоминать о гимнастике глаз'],
     ['waterEnabled', 'Напоминать пить воду'],
     ['postureEnabled', 'Напоминать об осанке'],
-    ['sound', 'Звуковой сигнал'],
+    ['sound', 'Звуки Сени'],
+    ['autoDnd', 'Молчать в полноэкранных окнах и на звонках (Windows)'],
     ['openAtLogin', 'Запускать при входе в систему'],
   ];
 
   function renderSettings(cfg) {
     const nodes = [];
     for (const [key, label] of SETTING_FIELDS) {
-      const inp = el('input', { type: 'number', min: '1', max: '600' });
+      const inp = el('input', { type: 'number', min: '1', max: key === 'volume' ? '100' : '600' });
       inp.value = cfg[key];
       inp.addEventListener('change', () => api.act('settings:set', { [key]: inp.value }));
       nodes.push(el('span', { text: label }), inp);
@@ -355,6 +435,7 @@
       flags.land = false;
       refreshClass();
       setLook(0, 0);
+      Sound.play('poke');
       api.dragStart();
     }
     if (press.dragging) api.dragMove(dx, dy);
@@ -362,6 +443,7 @@
   function dropRobot() {
     flags.drag = false;
     flags.land = true;
+    Sound.play('done');
     refreshClass();
     setTimeout(() => { flags.land = false; refreshClass(); }, 650);
     api.dragEnd();
@@ -431,9 +513,25 @@
   }
   $('#eyes-cancel').addEventListener('click', () => api.act('eyes:cancel'));
 
+  // ---------- карточка разминки ----------
+  const exCard = $('#exercise');
+  function renderExercise(ex) {
+    exCard.hidden = !ex.active;
+    if (!ex.active) return;
+    $('.ex-title', exCard).textContent = `🤸 ${ex.title}`;
+    $('.ex-steps', exCard).textContent = ex.steps;
+    $('.ex-fill', exCard).style.width = `${Math.round(((ex.total - ex.remainingSec) / ex.total) * 100)}%`;
+    $('.ex-left', exCard).textContent = `${ex.remainingSec} с`;
+  }
+  $('#ex-cancel').addEventListener('click', () => api.act('exercise:cancel'));
+
   // ---------- события из main ----------
   function onState(s) {
+    const prevMood = state ? state.mood : null;
     state = s;
+    Sound.setConfig(s.settings);
+    if (prevMood && prevMood !== s.mood) moodSound(prevMood, s.mood);
+    renderExercise(s.exercise);
     applyMood();
     if (s.mood === 'sleeping') setLook(0, 0);
     if (!panel.hidden) renderPanel(s);
@@ -447,6 +545,8 @@
 
   api.onState(onState);
   api.onCursor(onCursor);
+  api.onExerciseStart(() => { closeBubble(); Sound.play('work'); });
+  api.onOpenPanel(() => { if (panel.hidden) togglePanel(); else P.input.focus(); });
   api.onReminder((r) => pushBubble(r));
   api.onCelebrate((r) => pushBubble({ kind: 'happy', text: r.text, actions: [] }, { beepOn: false }));
   api.onEyesStart((r) => {

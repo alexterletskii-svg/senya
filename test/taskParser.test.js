@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { parseTask } = require('../src/core/taskParser');
+const { parseTask, nextDue, repeatLabel } = require('../src/core/taskParser');
 
 const NOW = new Date('2026-11-24T20:30:00').getTime();
 const at = (s) => new Date(s).getTime();
@@ -55,5 +55,43 @@ test('«завтра» без времени — 9:00', () => {
 
 test('без времени', () => {
   const r = parseTask('просто задача', NOW);
-  assert.deepEqual(r, { text: 'Просто задача', dueAt: null });
+  assert.deepEqual(r, { text: 'Просто задача', dueAt: null, repeat: null });
+});
+
+test('повтор: каждый день', () => {
+  const r = parseTask('каждый день в 9:00 зарядка', NOW);
+  assert.equal(r.text, 'Зарядка');
+  assert.deepEqual(r.repeat, { kind: 'daily', time: '09:00' });
+  assert.equal(r.dueAt, at('2026-11-25T09:00:00'));
+  assert.equal(repeatLabel(r.repeat), 'каждый день 09:00');
+});
+
+test('повтор: по будням, время без минут', () => {
+  const r = parseTask('по будням в 10 планёрка', NOW);
+  assert.equal(r.text, 'Планёрка');
+  assert.deepEqual(r.repeat, { kind: 'weekdays', time: '10:00' });
+});
+
+test('повтор: по будням пропускает выходные', () => {
+  const fri = new Date('2026-11-27T12:00:00').getTime();
+  assert.equal(nextDue({ kind: 'weekdays', time: '09:00' }, fri), at('2026-11-30T09:00:00'));
+});
+
+test('повтор: день недели', () => {
+  const r = parseTask('каждый понедельник в 11:30 отчёт', NOW);
+  assert.deepEqual(r.repeat, { kind: 'weekly', dow: 1, time: '11:30' });
+  assert.equal(r.dueAt, at('2026-11-30T11:30:00'));
+  assert.equal(parseTask('каждую пятницу в 17 итоги', NOW).repeat.dow, 5);
+  assert.equal(parseTask('по средам йога', NOW).repeat.dow, 3);
+});
+
+test('повтор: интервалы', () => {
+  assert.deepEqual(parseTask('каждые 2 часа выпить воды', NOW).repeat, { kind: 'interval', everyMin: 120 });
+  assert.equal(parseTask('каждый час размяться', NOW).repeat.everyMin, 60);
+  assert.equal(parseTask('каждые полчаса глаза', NOW).repeat.everyMin, 30);
+  assert.equal(parseTask('каждые 45 минут встать', NOW).dueAt, NOW + 45 * 60000);
+});
+
+test('обычная задача не считается повторяющейся', () => {
+  assert.equal(parseTask('в пятницу созвон', NOW).repeat, null);
 });

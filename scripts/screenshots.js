@@ -1,5 +1,5 @@
 'use strict';
-// Рендерит Робика в PNG для всех состояний (визуальная проверка без запуска всего приложения).
+// Рендерит Сеню в PNG для всех состояний (визуальная проверка без запуска всего приложения).
 // Запуск: SHOTS_DIR=shots xvfb-run -a npx electron --no-sandbox scripts/screenshots.js
 const path = require('node:path');
 const fs = require('node:fs');
@@ -25,7 +25,7 @@ app.whenReady().then(async () => {
   ipcMain.on('drag', () => {});
 
   const win = new BrowserWindow({
-    width: 700, height: 640, show: false, frame: false, transparent: false,
+    width: 700, height: 900, show: true, frame: false, transparent: false,
     webPreferences: { preload: path.join(__dirname, '..', 'src', 'main', 'preload.js'), contextIsolation: true, sandbox: true },
   });
   await win.loadFile(path.join(__dirname, '..', 'src', 'renderer', 'index.html'));
@@ -34,7 +34,7 @@ app.whenReady().then(async () => {
   await win.webContents.insertCSS('html,body{background:#c9d6e6 !important} #app{right:auto !important;left:0 !important}');
 
   const shot = async (name) => {
-    await sleep(350);
+    await sleep(800);
     const img = await win.webContents.capturePage();
     fs.writeFileSync(path.join(out, `${name}.png`), img.toPNG());
   };
@@ -53,6 +53,17 @@ app.whenReady().then(async () => {
     await shot(`mood-${mood}`);
   }
 
+  const ex = (anim, title, steps) => ({ active: true, id: anim, title, steps, anim, total: 30, remainingSec: 18 });
+  for (const [anim, title, steps] of [
+    ['palming', 'Ладони на глаза', 'Потри ладони и прикрой ими закрытые глаза. Не дави, смотри в темноту.'],
+    ['stretch', 'Потягушки', 'Встань, руки вверх, потянись макушкой к потолку.'],
+  ]) {
+    send('state', state({ mood: 'energetic', exercise: ex(anim, title, steps) }));
+    await shot(`exercise-${anim}`);
+  }
+  send('state', state({ mood: 'energetic', exercise: { active: false } }));
+  send('state', state({ mood: 'energetic', dnd: { active: true, auto: true, reason: 'call', manual: false, forever: false, untilMs: null } }));
+  await shot('mood-quiet');
   send('state', state({ mood: 'energetic' }));
   await win.webContents.executeJavaScript("document.getElementById('robot').classList.add('drag')");
   await shot('mood-drag');

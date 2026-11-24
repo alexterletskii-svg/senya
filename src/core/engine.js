@@ -2,7 +2,8 @@
 
 const EventEmitter = require('node:events');
 const { pick } = require('./phrases');
-const { parseTask } = require('./taskParser');
+const { parseTask, nextDue, repeatLabel } = require('./taskParser');
+const { getExercise, pickExercise } = require('./exercises');
 
 const DEFAULT_SETTINGS = {
   breakEveryMin: 30,
@@ -17,9 +18,12 @@ const DEFAULT_SETTINGS = {
   shortBreakMin: 5,
   longBreakMin: 15,
   cyclesBeforeLong: 4,
-  idleSleepMin: 3, // простой дольше — Робик засыпает
+  idleSleepMin: 3, // простой дольше — Сеня засыпает
   idleBreakMin: 5, // отсутствие дольше — засчитывается как перерыв
+  dailyGoal: 6, // перерывов в день для «цели дня» и серии
   sound: true,
+  volume: 60,
+  autoDnd: true, // молчать в полноэкранных приложениях, презентациях и звонках (Windows)
   openAtLogin: false,
 };
 
@@ -31,19 +35,24 @@ const AWAKE_ON_ALERT_MS = 12000;
 const MAX_TICK_SEC = 5; // больший разрыв считаем засыпанием компьютера
 const SNOOZE_BREAK_MIN = 5;
 const MISSED_FOR_SAD = 3;
+const HISTORY_DAYS = 90;
 
 const REMINDER_KINDS = [
-  // kind, ключ интервала, ключ включения, ключ фраз
+  // kind, ключ интервала, ключ включения
   ['break', 'breakEveryMin', 'breakEnabled'],
   ['eyes', 'eyesEveryMin', 'eyesEnabled'],
   ['water', 'waterEveryMin', 'waterEnabled'],
   ['posture', 'postureEveryMin', 'postureEnabled'],
 ];
 
-function todayKey(ms) {
+const pad2 = (n) => String(n).padStart(2, '0');
+const dayKey = (ms) => {
   const d = new Date(ms);
-  return `${d.getFullYear()}-${d.getMonth() + 1}-${d.getDate()}`;
-}
+  return `${d.getFullYear()}-${pad2(d.getMonth() + 1)}-${pad2(d.getDate())}`;
+};
+const emptyDay = (date) => ({
+  date, breaks: 0, pomodoros: 0, tasks: 0, exercises: 0, activeMin: 0, goalReached: false,
+});
 
 class Engine extends EventEmitter {
   /**
@@ -72,13 +81,23 @@ class Engine extends EventEmitter {
     this._loveUntil = 0;
     this._awakeUntil = 0;
     this._reminderSeq = 1;
+    this._activeAcc = 0;
+    this._dndUntil = 0; // 0 — выкл, Infinity — пока не выключат
+    this._autoDnd = false;
+    this._autoReason = '';
 
     this.pomo = { phase: 'idle', running: false, remainingSec: 0, cycle: 0 };
     this.eyes = { active: false, remainingSec: 0 };
+    this.exercise = { active: false, id: null, remainingSec: 0, total: 0 };
+    this._lastExercise = null;
 
-    const today = todayKey(t);
-    const s = saved.stats && saved.stats.date === today ? saved.stats : null;
-    this.stats = s ? { ...s } : { date: today, breaks: 0, pomodoros: 0, tasks: 0 };
+    // История по дням (последние 90). Старый формат saved.stats переносим.
+    this.history = {};
+    for (const [k, v] of Object.entries(saved.history || {})) this.history[k] = { ...emptyDay(k), ...v };
+    if (saved.stats && saved.stats.date && !this.history[saved.stats.date]) {
+      this.history[saved.stats.date] = { ...emptyDay(saved.stats.date), ...saved.stats };
+    }
+    this.stats = this._today(t);
 
     this._mood = this.getMood();
   }
@@ -97,6 +116,10 @@ class Engine extends EventEmitter {
       }
     }
     this.settings = next;
+    if (!next.autoDnd) {
+      this._autoDnd = false;
+      this._autoReason = '';
+    }
     this._emitState();
   }
 
@@ -120,11 +143,13 @@ class Engine extends EventEmitter {
     this._rollDay(now);
     this._tickPomodoro(dt);
     this._tickEyes(dt);
+    this._tickExercise(dt);
+    this._tickActive(dt);
 
+    const dnd = this.isDnd(now);
     const active = !this._sleeping && !(this.pomo.running && this.pomo.phase !== 'idle');
-    if (active) this._tickReminders(dt);
-
-    this._tickTasks(now);
+    if (active && !dnd) this._tickReminders(dt);
+    if (!dnd) this._tickTasks(now);
     this._emitState();
   }
 
@@ -140,7 +165,7 @@ class Engine extends EventEmitter {
       if (peak >= this.settings.idleBreakMin * 60) this._restTaken();
       if (this._sleeping) {
         this._sleeping = false;
-        this.emit('reminder', this._mk('wake', pick('wake', this._rng), []));
+        this._say(this._mk('wake', pick('wake', this._rng), []));
       }
     }
     if (!this._sleeping && s >= this.settings.idleSleepMin * 60) {
@@ -149,7 +174,47 @@ class Engine extends EventEmitter {
     this._emitState();
   }
 
+  _tickActive(dt) {
+    if (this._sleeping || this._idleSec >= 60) return;
+    this._activeAcc += dt;
+    if (this._activeAcc >= 60) {
+      this._activeAcc -= 60;
+      this.stats.activeMin += 1;
+    }
+  }
+
+  // ---------- не беспокоить ----------
+
+  isDnd(now = this._now()) {
+    return this._autoDnd || now < this._dndUntil;
+  }
+
+  /** minutes > 0 — на столько минут; -1 — пока не выключат; иначе выключить. */
+  setDnd(minutes) {
+    const m = Number(minutes);
+    if (m === -1) this._dndUntil = Infinity;
+    else if (m > 0) this._dndUntil = this._now() + m * 60000;
+    else this._dndUntil = 0;
+    this._emitState();
+  }
+
+  /** Автоматический режим от системы (полный экран, презентация, звонок). */
+  setAutoDnd(on, reason = '') {
+    const next = Boolean(on) && this.settings.autoDnd;
+    if (next === this._autoDnd && (!next || reason === this._autoReason)) return;
+    this._autoDnd = next;
+    this._autoReason = next ? reason : '';
+    this._emitState();
+  }
+
   // ---------- напоминания ----------
+
+  // Всё, что Сеня говорит сам по таймерам, глушится в «не беспокоить».
+  // force=true — ответ на действие пользователя (погладил, поболтал, добавил задачу).
+  _say(r, force = false) {
+    if (!force && this.isDnd()) return;
+    this.emit('reminder', r);
+  }
 
   _tickReminders(dt) {
     for (const [kind, intervalKey, enabledKey] of REMINDER_KINDS) {
@@ -167,17 +232,18 @@ class Engine extends EventEmitter {
       if (this._breakPending) this.missedBreaks += 1;
       this._breakPending = true;
       const text = this.missedBreaks >= MISSED_FOR_SAD ? pick('sad', this._rng) : pick('break', this._rng);
-      this.emit('reminder', this._mk('break', text, [
+      this._say(this._mk('break', text, [
+        { id: 'exercise:start', label: 'Упражнение' },
         { id: 'break:ack', label: 'Размялся ✓' },
         { id: 'break:snooze', label: `+${SNOOZE_BREAK_MIN} мин` },
       ]));
     } else if (kind === 'eyes') {
       if (this.eyes.active) return;
-      this.emit('reminder', this._mk('eyes', pick('eyes', this._rng), [
+      this._say(this._mk('eyes', pick('eyes', this._rng), [
         { id: 'eyes:start', label: 'Начать' },
       ]));
     } else {
-      this.emit('reminder', this._mk(kind, pick(kind, this._rng), []));
+      this._say(this._mk(kind, pick(kind, this._rng), []));
     }
   }
 
@@ -186,7 +252,12 @@ class Engine extends EventEmitter {
   }
 
   greet() {
-    this.emit('reminder', this._mk('hello', pick('greeting', this._rng), []));
+    const open = this.tasks.filter((t) => !t.done).length;
+    const streak = this.streak();
+    let text = pick('greeting', this._rng);
+    if (open > 0) text += ` В списке дел: ${open}.`;
+    if (streak > 1) text += ` Серия: ${streak} дн.`;
+    this._say(this._mk('hello', text, []), true);
   }
 
   // ---------- перерывы ----------
@@ -211,7 +282,67 @@ class Engine extends EventEmitter {
     this._acc.break = 0;
     this._acc.eyes = 0;
     this._acc.posture = 0;
-    if (counted) this.stats.breaks += 1;
+    if (counted) {
+      this.stats.breaks += 1;
+      this._checkGoal();
+    }
+  }
+
+  // ---------- цель дня и серия ----------
+
+  _metGoal(key) {
+    const d = this.history[key];
+    return Boolean(d) && d.breaks >= this.settings.dailyGoal;
+  }
+
+  _checkGoal() {
+    if (this.stats.goalReached || this.stats.breaks < this.settings.dailyGoal) return;
+    this.stats.goalReached = true;
+    this._startLove(true);
+    const n = this.streak();
+    const text = `${pick('goal', this._rng)} ${this.settings.dailyGoal} перерывов.` + (n > 1 ? ` Серия: ${n} дн.` : '');
+    this._say(this._mk('goal', text, []), true);
+  }
+
+  /** Дней подряд с выполненной целью (сегодня учитывается, если цель уже достигнута). */
+  streak() {
+    const d = new Date(this._now());
+    if (!this._metGoal(dayKey(d.getTime()))) d.setDate(d.getDate() - 1);
+    let n = 0;
+    while (n < 400 && this._metGoal(dayKey(d.getTime()))) {
+      n += 1;
+      d.setDate(d.getDate() - 1);
+    }
+    return n;
+  }
+
+  week() {
+    const out = [];
+    const d = new Date(this._now());
+    d.setDate(d.getDate() - 6);
+    for (let i = 0; i < 7; i++) {
+      const key = dayKey(d.getTime());
+      const h = this.history[key] || emptyDay(key);
+      out.push({
+        date: key, dow: d.getDay(), breaks: h.breaks, pomodoros: h.pomodoros,
+        tasks: h.tasks, exercises: h.exercises, activeMin: h.activeMin, goal: this._metGoal(key),
+      });
+      d.setDate(d.getDate() + 1);
+    }
+    return out;
+  }
+
+  _today(now) {
+    const key = dayKey(now);
+    if (!this.history[key]) this.history[key] = emptyDay(key);
+    return this.history[key];
+  }
+
+  _rollDay(now) {
+    if (this.stats.date === dayKey(now)) return;
+    this.stats = this._today(now);
+    const keys = Object.keys(this.history).sort();
+    while (keys.length > HISTORY_DAYS) delete this.history[keys.shift()];
   }
 
   // ---------- гимнастика для глаз ----------
@@ -235,8 +366,37 @@ class Engine extends EventEmitter {
     this.eyes.remainingSec = Math.max(0, this.eyes.remainingSec - dt);
     if (this.eyes.remainingSec <= 0) {
       this.eyes = { active: false, remainingSec: 0 };
-      this.emit('reminder', this._mk('eyes-done', pick('eyesDone', this._rng), []));
+      this._say(this._mk('eyes-done', pick('eyesDone', this._rng), []), true);
     }
+  }
+
+  // ---------- микро-разминки ----------
+
+  startExercise(id) {
+    if (this.exercise.active) return;
+    const ex = pickExercise(id, this._lastExercise, this._rng);
+    this._lastExercise = ex.id;
+    this.exercise = { active: true, id: ex.id, remainingSec: ex.seconds, total: ex.seconds };
+    this._awakeUntil = Math.max(this._awakeUntil, this._now() + AWAKE_ON_TOUCH_MS);
+    this.emit('exercise-start', { ...ex });
+    this._emitState();
+  }
+
+  cancelExercise() {
+    if (!this.exercise.active) return;
+    this.exercise = { active: false, id: null, remainingSec: 0, total: 0 };
+    this._emitState();
+  }
+
+  _tickExercise(dt) {
+    if (!this.exercise.active) return;
+    this.exercise.remainingSec = Math.max(0, this.exercise.remainingSec - dt);
+    if (this.exercise.remainingSec > 0) return;
+    this.exercise = { active: false, id: null, remainingSec: 0, total: 0 };
+    this.stats.exercises += 1;
+    this._restTaken(true);
+    this._happyUntil = this._now() + HAPPY_MS;
+    this._say(this._mk('exercise-done', pick('exerciseDone', this._rng), []), true);
   }
 
   // ---------- Pomodoro ----------
@@ -262,7 +422,7 @@ class Engine extends EventEmitter {
   stopPomodoro() {
     if (this.pomo.phase === 'idle') return;
     this.pomo = { phase: 'idle', running: false, remainingSec: 0, cycle: 0 };
-    this.emit('reminder', this._mk('pomodoro', pick('pomodoroStop', this._rng), []));
+    this._say(this._mk('pomodoro', pick('pomodoroStop', this._rng), []), true);
     this._emitState();
   }
 
@@ -298,7 +458,7 @@ class Engine extends EventEmitter {
 
   _announcePhase(phase) {
     const key = { work: 'pomodoroWork', break: 'pomodoroBreak', longBreak: 'pomodoroLong' }[phase];
-    this.emit('reminder', this._mk('pomodoro', pick(key, this._rng), [], { phase }));
+    this._say(this._mk('pomodoro', pick(key, this._rng), [], { phase }));
   }
 
   // ---------- список дел ----------
@@ -312,13 +472,14 @@ class Engine extends EventEmitter {
       id: this._nextTaskId++,
       text: parsed.text,
       dueAt: parsed.dueAt,
+      repeat: parsed.repeat || null,
       done: false,
       notified: false,
       createdAt: now,
     };
     this.tasks.push(task);
     this.emit('tasks-changed');
-    this.emit('reminder', this._mk('task-added', pick('taskAdded', this._rng), [], { taskId: task.id, dueAt: task.dueAt }));
+    this._say(this._mk('task-added', pick('taskAdded', this._rng), [], { taskId: task.id, dueAt: task.dueAt }), true);
     this._emitState();
     return task;
   }
@@ -326,10 +487,18 @@ class Engine extends EventEmitter {
   completeTask(id) {
     const t = this.tasks.find((x) => x.id === id);
     if (!t || t.done) return;
-    t.done = true;
-    t.doneAt = this._now();
+    const now = this._now();
     this.stats.tasks += 1;
-    this._happyUntil = this._now() + HAPPY_MS;
+    this._happyUntil = now + HAPPY_MS;
+    if (t.repeat) {
+      // Повторяющаяся задача не закрывается: переезжает на следующий раз
+      t.dueAt = nextDue(t.repeat, Math.max(now, t.dueAt || now));
+      t.notified = false;
+      t.lastDoneAt = now;
+    } else {
+      t.done = true;
+      t.doneAt = now;
+    }
     this.emit('tasks-changed');
     this.emit('celebrate', { text: pick('happy', this._rng) });
     this._emitState();
@@ -372,21 +541,21 @@ class Engine extends EventEmitter {
       t.notified = true;
       this._awakeUntil = now + AWAKE_ON_ALERT_MS;
       this.emit('tasks-changed');
-      this.emit('reminder', this._mk('task', `${pick('task', this._rng)} ${t.text}`, [
+      this._say(this._mk('task', `${pick('task', this._rng)} ${t.text}`, [
         { id: 'task:done', label: 'Готово ✓', payload: t.id },
         { id: 'task:snooze', label: '+10 мин', payload: t.id },
-      ], { taskId: t.id }));
+      ], { taskId: t.id }), true);
     }
   }
 
   // ---------- общение ----------
 
-  _startLove() {
+  _startLove(silent = false) {
     const now = this._now();
     const already = now < this._loveUntil;
     this._loveUntil = now + LOVE_MS;
     this._awakeUntil = Math.max(this._awakeUntil, now + AWAKE_ON_TOUCH_MS);
-    if (!already) this.emit('reminder', this._mk('love', pick('love', this._rng), []));
+    if (!already && !silent) this._say(this._mk('love', pick('love', this._rng), []), true);
   }
 
   /** Погладили. */
@@ -395,18 +564,18 @@ class Engine extends EventEmitter {
     this._emitState();
   }
 
-  /** Тыкнули: будит спящего Робика. */
+  /** Тыкнули: будит спящего Сеню. */
   poke() {
     if (this.getMood() !== 'sleeping') return;
     this._awakeUntil = this._now() + AWAKE_ON_TOUCH_MS;
-    this.emit('reminder', this._mk('poke', pick('poke', this._rng), []));
+    this._say(this._mk('poke', pick('poke', this._rng), []), true);
     this._emitState();
   }
 
   /** Поболтать. */
   chat() {
     this._awakeUntil = Math.max(this._awakeUntil, this._now() + AWAKE_ON_TOUCH_MS);
-    this.emit('reminder', this._mk('chat', pick('chat', this._rng), []));
+    this._say(this._mk('chat', pick('chat', this._rng), []), true);
     this._emitState();
   }
 
@@ -423,25 +592,35 @@ class Engine extends EventEmitter {
   }
 
   snapshot() {
+    const ex = this.exercise.active ? getExercise(this.exercise.id) : null;
+    const now = this._now();
     return {
       mood: this._mood,
       hardHat: this.pomo.phase === 'work',
       missedBreaks: this.missedBreaks,
       pomodoro: { ...this.pomo, remainingSec: Math.ceil(Math.max(0, this.pomo.remainingSec)) },
       eyes: { active: this.eyes.active, remainingSec: Math.ceil(this.eyes.remainingSec) },
-      tasks: this.tasks.map((t) => ({ ...t })),
+      exercise: ex
+        ? { active: true, id: ex.id, title: ex.title, steps: ex.steps, anim: ex.anim, total: this.exercise.total, remainingSec: Math.ceil(this.exercise.remainingSec) }
+        : { active: false },
+      dnd: {
+        active: this.isDnd(now),
+        auto: this._autoDnd,
+        reason: this._autoReason,
+        manual: now < this._dndUntil,
+        forever: this._dndUntil === Infinity,
+        untilMs: Number.isFinite(this._dndUntil) && now < this._dndUntil ? this._dndUntil : null,
+      },
+      tasks: this.tasks.map((t) => ({ ...t, repeatText: repeatLabel(t.repeat) })),
       stats: { ...this.stats },
+      week: this.week(),
+      streak: this.streak(),
       settings: { ...this.settings },
     };
   }
 
   persistable() {
-    return { settings: this.settings, tasks: this.tasks, stats: this.stats };
-  }
-
-  _rollDay(now) {
-    const key = todayKey(now);
-    if (this.stats.date !== key) this.stats = { date: key, breaks: 0, pomodoros: 0, tasks: 0 };
+    return { settings: this.settings, tasks: this.tasks, history: this.history };
   }
 
   _emitState() {
@@ -460,6 +639,9 @@ class Engine extends EventEmitter {
       case 'break:snooze': return this.snoozeBreak();
       case 'eyes:start': return this.startEyes();
       case 'eyes:cancel': return this.cancelEyes();
+      case 'exercise:start': return this.startExercise(payload);
+      case 'exercise:cancel': return this.cancelExercise();
+      case 'dnd:set': return this.setDnd(payload);
       case 'pomo:start': return this.startPomodoro();
       case 'pomo:pause': return this.pausePomodoro();
       case 'pomo:resume': return this.resumePomodoro();
