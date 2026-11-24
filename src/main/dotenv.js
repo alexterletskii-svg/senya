@@ -3,7 +3,7 @@ const fs = require('node:fs');
 
 function parse(text) {
   const out = {};
-  for (const raw of String(text).split(/\r?\n/)) {
+  for (const raw of String(text).replace(/^\uFEFF/, '').split(/\r?\n/)) {
     const line = raw.trim();
     if (!line || line.startsWith('#')) continue;
     const m = line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);

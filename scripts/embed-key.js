@@ -8,7 +8,7 @@ const NAMES = ['DEEPSEEK_API_KEY', 'DEEPSEEK_BASE_URL', 'DEEPSEEK_MODEL'];
 
 function parseEnv(text) {
   const out = {};
-  for (const raw of text.split(/\r?\n/)) {
+  for (const raw of String(text).replace(/^\uFEFF/, '').split(/\r?\n/)) {
     const line = raw.trim();
     if (!line || line.startsWith('#')) continue;
     const m = line.match(/^(?:export\s+)?([A-Za-z_][A-Za-z0-9_]*)\s*=\s*(.*)$/);
