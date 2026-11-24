@@ -60,3 +60,9 @@ test('пустой вопрос и настройка адреса/модели'
   assert.equal(JSON.parse(spy.opts.body).model, 'm1');
   assert.equal(isConfigured({ DEEPSEEK_API_KEY: '' }), false);
 });
+
+test('loadEnv: переменная окружения главнее встроенного ключа', () => {
+  const { loadEnv } = require('../src/main/ai');
+  assert.equal(loadEnv({ DEEPSEEK_API_KEY: 'sk-env' }).DEEPSEEK_API_KEY, 'sk-env');
+  assert.equal(loadEnv({}).DEEPSEEK_API_KEY, undefined);
+});

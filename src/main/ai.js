@@ -10,6 +10,20 @@ const SYSTEM_PROMPT =
 const MAX_HISTORY = 8;
 const TIMEOUT_MS = 20000;
 
+function loadEnv(base = process.env) {
+  let embedded = {};
+  try {
+    embedded = require('./embedded.json');
+  } catch {
+    embedded = {};
+  }
+  const env = { ...base };
+  for (const [k, v] of Object.entries(embedded)) {
+    if (v && !(env[k] && String(env[k]).trim())) env[k] = v;
+  }
+  return env;
+}
+
 function isConfigured(env = process.env) {
   return Boolean(env.DEEPSEEK_API_KEY && env.DEEPSEEK_API_KEY.trim());
 }
@@ -24,7 +38,7 @@ function buildMessages({ history = [], userText, context = '' }) {
 }
 
 class Chat {
-  constructor({ env = process.env, fetchFn = globalThis.fetch } = {}) {
+  constructor({ env = loadEnv(), fetchFn = globalThis.fetch } = {}) {
     this.env = env;
     this.fetchFn = fetchFn;
     this.history = [];
@@ -82,4 +96,4 @@ class Chat {
   }
 }
 
-module.exports = { Chat, buildMessages, isConfigured, SYSTEM_PROMPT };
+module.exports = { loadEnv, Chat, buildMessages, isConfigured, SYSTEM_PROMPT };

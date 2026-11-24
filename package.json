@@ -7,7 +7,9 @@
     "start": "electron .",
     "test": "node --test test/*.test.js",
     "dist": "electron-builder",
-    "dist:win": "electron-builder --win --publish never"
+    "dist:win": "electron-builder --win --publish never",
+    "predist:win": "node scripts/embed-key.js",
+    "predist": "node scripts/embed-key.js"
   },
   "license": "MIT",
   "devDependencies": {
