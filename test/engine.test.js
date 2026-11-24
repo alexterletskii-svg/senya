@@ -13,7 +13,7 @@ test('напоминание о перерыве через breakEveryMin акт
   advance(60);
   const br = reminders.filter((r) => r.kind === 'break');
   assert.equal(br.length, 1);
-  assert.deepEqual(br[0].actions.map((a) => a.id), ['break:ack', 'break:snooze']);
+  assert.deepEqual(br[0].actions.map((a) => a.id), ['exercise:start', 'break:ack', 'break:snooze']);
 });
 
 test('вода, осанка и глаза приходят со своими интервалами', () => {
@@ -236,4 +236,152 @@ test('chat говорит фразу', () => {
   e.dispatch('chat');
   const r = reminders.find((x) => x.kind === 'chat');
   assert.ok(r && r.text.length > 5);
+});
+
+// ---------- не беспокоить ----------
+
+test('DND: таймерные напоминания молчат, дела приходят после выключения', () => {
+  const { e, reminders, advance } = makeEngine();
+  e.addTask('через 2 минуты позвонить');
+  reminders.length = 0;
+  e.dispatch('dnd:set', 60);
+  assert.equal(e.snapshot().dnd.active, true);
+  advance(50 * 60);
+  assert.deepEqual(kinds(reminders), []);
+  e.dispatch('dnd:set', 0);
+  advance(2);
+  assert.ok(kinds(reminders).includes('task'));
+});
+
+test('DND сам заканчивается по времени, «пока не выключат» — нет', () => {
+  const { e, advance } = makeEngine();
+  e.setDnd(10);
+  advance(11 * 60);
+  assert.equal(e.isDnd(), false);
+  e.setDnd(-1);
+  advance(5 * 3600);
+  assert.equal(e.isDnd(), true);
+  assert.equal(e.snapshot().dnd.forever, true);
+});
+
+test('авто-DND (полный экран/звонок) включается и выключается; настройка его отключает', () => {
+  const { e, reminders, advance } = makeEngine();
+  e.setAutoDnd(true, 'call');
+  assert.equal(e.snapshot().dnd.reason, 'call');
+  advance(40 * 60);
+  assert.deepEqual(kinds(reminders), []);
+  e.setAutoDnd(false);
+  assert.equal(e.isDnd(), false);
+  e.updateSettings({ autoDnd: false });
+  e.setAutoDnd(true, 'fullscreen');
+  assert.equal(e.isDnd(), false);
+});
+
+test('в DND можно погладить и поболтать — это ответ пользователю', () => {
+  const { e, reminders } = makeEngine();
+  e.setDnd(-1);
+  e.pet();
+  e.chat();
+  assert.deepEqual(kinds(reminders).sort(), ['chat', 'love']);
+});
+
+// ---------- разминки ----------
+
+test('разминка: идёт по таймеру, потом засчитывается как перерыв', () => {
+  const { e, reminders, advance } = makeEngine();
+  const started = [];
+  e.on('exercise-start', (x) => started.push(x));
+  e.dispatch('exercise:start');
+  assert.equal(started.length, 1);
+  const total = e.snapshot().exercise.total;
+  advance(total - 1);
+  assert.equal(e.snapshot().exercise.active, true);
+  advance(2);
+  assert.equal(e.snapshot().exercise.active, false);
+  assert.equal(e.stats.breaks, 1);
+  assert.equal(e.stats.exercises, 1);
+  assert.ok(kinds(reminders).includes('exercise-done'));
+  assert.equal(e.getMood(), 'happy');
+});
+
+test('разминка: отмена не засчитывается; подряд не повторяется', () => {
+  const { e } = makeEngine();
+  e.startExercise();
+  const first = e.snapshot().exercise.id;
+  e.cancelExercise();
+  assert.equal(e.stats.breaks, 0);
+  e.startExercise();
+  assert.notEqual(e.snapshot().exercise.id, first);
+});
+
+// ---------- цель дня, серия, статистика ----------
+
+test('цель дня: награда и сердечки', () => {
+  const { e, reminders } = makeEngine();
+  e.updateSettings({ dailyGoal: 2 });
+  e.ackBreak();
+  assert.ok(!kinds(reminders).includes('goal'));
+  e.ackBreak();
+  assert.ok(kinds(reminders).includes('goal'));
+  assert.equal(e.getMood(), 'love');
+  assert.equal(e.streak(), 1);
+  e.ackBreak();
+  assert.equal(reminders.filter((r) => r.kind === 'goal').length, 1);
+});
+
+test('серия считается по дням подряд, пропуск обнуляет', () => {
+  const { e, clock, advance } = makeEngine();
+  e.updateSettings({ dailyGoal: 1 });
+  for (let day = 0; day < 3; day++) {
+    e.ackBreak();
+    clock.t += 24 * 3600 * 1000;
+    advance(1);
+  }
+  assert.equal(e.streak(), 3); // сегодня ещё не выполнено, считаем со вчера
+  clock.t += 24 * 3600 * 1000; // день пропущен
+  advance(1);
+  clock.t += 24 * 3600 * 1000;
+  advance(1);
+  assert.equal(e.streak(), 0);
+  const w = e.week();
+  assert.equal(w.length, 7);
+  assert.equal(w[6].breaks, 0);
+});
+
+test('активные минуты считаются, во сне — нет', () => {
+  const { e, advance } = makeEngine();
+  advance(180);
+  assert.equal(e.stats.activeMin, 3);
+  advance(120, 4 * 60); // спим
+  assert.equal(e.stats.activeMin, 3);
+});
+
+test('старый формат сохранения (stats) переезжает в историю', () => {
+  const { e } = makeEngine({ stats: { date: '2026-11-24', breaks: 4, pomodoros: 2, tasks: 1 } });
+  assert.equal(e.stats.breaks, 4);
+  assert.equal(e.persistable().history['2026-11-24'].pomodoros, 2);
+});
+
+// ---------- повторяющиеся задачи ----------
+
+test('повторяющаяся задача не закрывается, а переезжает', () => {
+  const { e, advance } = makeEngine();
+  const t = e.addTask('каждый день в 11:00 планёрка');
+  const first = t.dueAt;
+  advance(61 * 60 + 5); // 10:00 -> 11:01
+  e.completeTask(t.id);
+  assert.equal(e.tasks[0].done, false);
+  assert.ok(e.tasks[0].dueAt > first);
+  assert.equal(new Date(e.tasks[0].dueAt).getDate(), new Date(first).getDate() + 1);
+  assert.equal(e.stats.tasks, 1);
+  assert.equal(e.getMood(), 'happy');
+});
+
+test('приветствие: число дел и серия', () => {
+  const { e, reminders } = makeEngine();
+  e.addTask('купить молоко');
+  e.addTask('позвонить');
+  reminders.length = 0;
+  e.greet();
+  assert.match(reminders[0].text, /В списке дел: 2/);
 });

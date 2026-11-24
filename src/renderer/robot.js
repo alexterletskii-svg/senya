@@ -1,11 +1,11 @@
 'use strict';
 
-// Робик: парящий робот-экран. Лицо — только глаза, вся эмоция в их форме.
+// Сеня: парящий робот-экран. Лицо — только глаза, вся эмоция в их форме.
 // Состояния — классы на <svg id="robot"> (mood-*, hat, drag, land), анимации в style.css.
 const HEART = 'M0 9 C-20 -5 -18 -21 -7 -21 C-3 -21 0 -18 0 -14 C0 -18 3 -21 7 -21 C18 -21 20 -5 0 9Z';
 
 window.ROBOT_SVG = `
-<svg id="robot" class="mood-energetic" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" aria-label="Робик">
+<svg id="robot" class="mood-energetic" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" aria-label="Сеня">
   <defs>
     <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
       <stop offset="0" stop-color="#8f80ff"/>

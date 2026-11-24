@@ -1,7 +1,7 @@
 {
-  "name": "robik",
+  "name": "senya",
   "version": "0.1.0",
-  "description": "Робик — цифровой напарник на рабочем столе: перерывы, гимнастика для глаз, Pomodoro, список дел",
+  "description": "Сеня — цифровой напарник на рабочем столе: перерывы, разминки, Pomodoro, дела",
   "main": "src/main/main.js",
   "scripts": {
     "start": "electron .",
@@ -14,8 +14,8 @@
     "electron-builder": "^25.1.8"
   },
   "build": {
-    "appId": "dev.senya.robik",
-    "productName": "Робик",
+    "appId": "dev.senya.app",
+    "productName": "Сеня",
     "files": [
       "src/**/*",
       "package.json"
@@ -29,5 +29,6 @@
     "linux": {
       "target": "AppImage"
     }
-  }
+  },
+  "productName": "Senya"
 }

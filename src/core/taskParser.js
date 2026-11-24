@@ -48,10 +48,110 @@ function capitalize(s) {
   return s ? s[0].toUpperCase() + s.slice(1) : s;
 }
 
+// ---- повторяющиеся задачи ----
+const WEEKDAY_WORD = '(понедельник[а-я]*|вторник[а-я]*|сред[а-я]*|четверг[а-я]*|пятниц[а-я]*|суббот[а-я]*|воскресень[а-я]*)';
+const REP_WEEKDAYS = new RegExp('(?:^|[\\s,])(?:по\\s+будням|каждый\\s+будний\\s+день|в\\s+будни)' + END, 'iu');
+const REP_DAILY = new RegExp('(?:^|[\\s,])(?:каждый\\s+день|ежедневно)' + END, 'iu');
+const REP_WEEKLY = new RegExp('(?:^|[\\s,])(?:каждый|каждую|каждое|по)\\s+' + WEEKDAY_WORD + END, 'iu');
+const REP_INTERVAL = new RegExp(
+  '(?:^|[\\s,])кажд(?:ые|ый|ую)\\s+(?:(\\d+|[а-яё]+)\\s+)?(полчаса|часа|часов|час|минуту|минуты|минут|мин)' + END,
+  'iu'
+);
+const DOW_PREFIX = [['воскр', 0], ['понед', 1], ['вторн', 2], ['сред', 3], ['четв', 4], ['пятн', 5], ['субб', 6]];
+const DOW_SHORT = ['вс', 'пн', 'вт', 'ср', 'чт', 'пт', 'сб'];
+
+// Следующее срабатывание повторяющейся задачи строго после момента from.
+function nextDue(rep, from) {
+  if (rep.kind === 'interval') return from + rep.everyMin * MIN;
+  const [h, m] = rep.time.split(':').map(Number);
+  for (let i = 0; i < 9; i++) {
+    const d = new Date(from);
+    d.setDate(d.getDate() + i);
+    d.setHours(h, m, 0, 0);
+    const dow = d.getDay();
+    const ok = rep.kind === 'daily' ||
+      (rep.kind === 'weekdays' && dow >= 1 && dow <= 5) ||
+      (rep.kind === 'weekly' && dow === rep.dow);
+    if (ok && d.getTime() > from) return d.getTime();
+  }
+  return from + DAY;
+}
+
+function repeatLabel(rep) {
+  if (!rep) return '';
+  if (rep.kind === 'interval') {
+    if (rep.everyMin === 60) return 'каждый час';
+    if (rep.everyMin % 60 === 0) return `каждые ${rep.everyMin / 60} ч`;
+    return `каждые ${rep.everyMin} мин`;
+  }
+  if (rep.kind === 'daily') return `каждый день ${rep.time}`;
+  if (rep.kind === 'weekdays') return `по будням ${rep.time}`;
+  return `${DOW_SHORT[rep.dow]} ${rep.time}`;
+}
+
+const pad2 = (n) => String(n).padStart(2, '0');
+
+function parseRepeat(text) {
+  let m;
+  if ((m = REP_WEEKDAYS.exec(text))) return { rep: { kind: 'weekdays' }, full: m[0] };
+  if ((m = REP_DAILY.exec(text))) return { rep: { kind: 'daily' }, full: m[0] };
+  if ((m = REP_WEEKLY.exec(text))) {
+    const w = m[1].toLowerCase();
+    const hit = DOW_PREFIX.find(([p]) => w.startsWith(p));
+    if (hit) return { rep: { kind: 'weekly', dow: hit[1] }, full: m[0] };
+  }
+  if ((m = REP_INTERVAL.exec(text))) {
+    const [full, numRaw, unit] = m;
+    const u = unit.toLowerCase();
+    let n = 1;
+    if (u === 'полчаса') n = 0.5;
+    else if (numRaw !== undefined) {
+      const w = numRaw.toLowerCase();
+      if (/^\d/.test(w)) n = parseFloat(w);
+      else if (w in WORD_NUMBERS) n = WORD_NUMBERS[w];
+      else return null;
+    }
+    const perUnit = u === 'полчаса' ? 60 : u.startsWith('мин') ? 1 : 60;
+    const everyMin = Math.round(n * perUnit);
+    if (everyMin >= 1) return { rep: { kind: 'interval', everyMin }, full };
+  }
+  return null;
+}
+
 function parseTask(raw, now = Date.now()) {
   const original = String(raw || '').trim();
   let text = ' ' + original;
   let dueAt = null;
+  let repeat = null;
+
+  // 0. Повторение: «каждый день в 9», «по будням», «каждый понедельник», «каждые 2 часа»
+  const pr = parseRepeat(text);
+  if (pr) {
+    repeat = pr.rep;
+    text = text.replace(pr.full, ' ');
+    if (repeat.kind === 'interval') {
+      dueAt = nextDue(repeat, now);
+    } else {
+      let time = '09:00';
+      const abs = ABS.exec(text);
+      if (abs) {
+        const h = parseInt(abs[1], 10);
+        const m = abs[2] ? parseInt(abs[2], 10) : 0;
+        if (h <= 24 && m < 60) {
+          let hh = h;
+          const p = abs[3] ? abs[3].toLowerCase() : null;
+          if ((p === 'дня' || p === 'вечера') && hh < 12) hh += 12;
+          if (hh === 24 || (p === 'ночи' && hh === 12)) hh = 0;
+          time = `${pad2(hh)}:${pad2(m)}`;
+          text = text.replace(abs[0], ' ');
+        }
+      }
+      repeat.time = time;
+      dueAt = nextDue(repeat, now);
+    }
+    const cleanedRep = capitalize(cleanup(text));
+    return { text: cleanedRep || capitalize(original), dueAt, repeat };
+  }
 
   // 1. Относительное время: «через N единиц»
   const rel = REL.exec(text);
@@ -122,7 +222,7 @@ function parseTask(raw, now = Date.now()) {
   }
 
   const cleaned = capitalize(cleanup(text));
-  return { text: cleaned || capitalize(original), dueAt };
+  return { text: cleaned || capitalize(original), dueAt, repeat: null };
 }
 
-module.exports = { parseTask };
+module.exports = { parseTask, nextDue, repeatLabel };

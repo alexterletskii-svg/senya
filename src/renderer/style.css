@@ -87,6 +87,39 @@ html, body { background: transparent; overflow: hidden; font-family: system-ui, 
 #robot.mood-sleeping .z2 { animation-delay: 1s; }
 #robot.mood-sleeping .z3 { animation-delay: 2s; }
 
+/* --- «тишина» и «говорит» --- */
+#robot.quiet .bulb { fill: #8a8fa0; animation: none; }
+#robot.quiet .antenna { animation: none; }
+#robot.talk .bulb { animation: bulb .25s infinite; }
+#robot.talk .screen { filter: brightness(1.35); }
+
+/* --- разминки: Сеня показывает упражнение --- */
+#robot.ex-tilt .head { animation: ex-tilt 3s ease-in-out infinite; }
+#robot.ex-turn .head { animation: ex-turn 3.2s ease-in-out infinite; }
+#robot.ex-twist .head { animation: ex-twist 4s ease-in-out infinite; }
+#robot.ex-shoulders .fin-l { animation: ex-circle 2.4s linear infinite; }
+#robot.ex-shoulders .fin-r { animation: ex-circle 2.4s linear infinite reverse; }
+#robot.ex-wrists .fin-l { animation: ex-wrist .5s ease-in-out infinite alternate; }
+#robot.ex-wrists .fin-r { animation: ex-wrist .5s ease-in-out infinite alternate-reverse; }
+#robot.ex-stretch .bot { animation: ex-stretch 3.4s ease-in-out infinite; }
+#robot.ex-stretch .fin-l { animation: none; transform: rotate(60deg); }
+#robot.ex-stretch .fin-r { animation: none; transform: rotate(-60deg); }
+#robot.ex-breath .bot { animation: ex-breath 10s ease-in-out infinite; }
+#robot.ex-palming .eyes { display: none; }
+#robot.ex-palming .eyes-closed { display: inline; }
+#robot.ex-palming .fin-l { animation: none; transform: translate(54px, 0) rotate(-10deg); }
+#robot.ex-palming .fin-r { animation: none; transform: translate(-54px, 0) rotate(10deg); }
+#robot.ex-walk .bot { animation: ex-walk 1.8s ease-in-out infinite; }
+
+@keyframes ex-tilt { 0%,100% { transform: rotate(-16deg); } 50% { transform: rotate(16deg); } }
+@keyframes ex-turn { 0%,100% { transform: translateX(-12px); } 50% { transform: translateX(12px); } }
+@keyframes ex-twist { 0%,100% { transform: translateX(-8px) rotate(-10deg); } 50% { transform: translateX(8px) rotate(10deg); } }
+@keyframes ex-circle { 0% { transform: translate(0, -9px); } 25% { transform: translate(9px, 0); } 50% { transform: translate(0, 9px); } 75% { transform: translate(-9px, 0); } 100% { transform: translate(0, -9px); } }
+@keyframes ex-wrist { from { transform: rotate(-28deg); } to { transform: rotate(28deg); } }
+@keyframes ex-stretch { 0%,100% { transform: translateY(0) scaleY(1); } 50% { transform: translateY(-12px) scaleY(1.13); } }
+@keyframes ex-breath { 0%,100% { transform: scale(1); } 40% { transform: scale(1.12); } }
+@keyframes ex-walk { 0%,100% { transform: translateX(-18px) rotate(-3deg); } 50% { transform: translateX(18px) rotate(3deg); } }
+
 /* --- подняли (перетаскивание) --- */
 #robot.drag .eyes { display: none; }
 #robot.drag .eyes-open { display: inline; opacity: 1; transform: scale(1.18); }
@@ -158,6 +191,27 @@ button:disabled { opacity: .45; cursor: default; }
 .row { display: flex; gap: 6px; flex-wrap: wrap; }
 .row > * { flex: 1; }
 .row.quad > * { flex: 1 1 45%; }
+.grid3 { display: grid; grid-template-columns: repeat(2, minmax(0, 1fr)); gap: 6px; }
+.grid3 button { padding: 6px 6px; font-size: 12.5px; }
+.chip { background: #3a2f55; color: #d9c9ff; font-size: 11px; padding: 2px 8px; border-radius: 10px; margin: 0 auto 0 8px; }
+.streak { font-weight: 600; font-size: 13px; }
+.week { display: flex; gap: 6px; align-items: flex-end; height: 84px; }
+.wd { flex: 1; display: flex; flex-direction: column; align-items: center; justify-content: flex-end; gap: 2px; font-size: 11px; color: #9db0c6; }
+.wd i { font-style: normal; color: #cfdbe8; }
+.wd .bar-wrap { height: 44px; display: flex; align-items: flex-end; }
+.wd .bar { width: 16px; min-height: 2px; border-radius: 4px 4px 2px 2px; background: #4a5b75; }
+.wd.goal .bar { background: #6bff9a; }
+.wd.today .bar { box-shadow: 0 0 0 2px #2f7df6; }
+.wd.today span { color: #fff; font-weight: 700; }
+
+/* ---------- карточка разминки ---------- */
+#exercise { width: 300px; background: rgba(27, 36, 50, .97); color: #e8eef6; border-radius: 16px; padding: 12px; box-shadow: 0 8px 28px rgba(0,0,0,.4); margin-right: 6px; display: flex; flex-direction: column; gap: 8px; }
+#exercise .ex-title { font-weight: 800; font-size: 15px; }
+#exercise .ex-steps { line-height: 1.4; color: #c7d4e4; }
+#exercise .ex-bar { height: 8px; border-radius: 4px; background: #2e3b50; overflow: hidden; }
+#exercise .ex-fill { height: 100%; background: #6bff9a; transition: width 1s linear; }
+#exercise .ex-row { display: flex; justify-content: space-between; align-items: center; }
+#exercise .ex-left { font-variant-numeric: tabular-nums; color: #6bff9a; }
 .task-add { display: flex; gap: 6px; }
 .task-add input { flex: 1; min-width: 0; }
 input[type=text], input[type=number] { font: inherit; background: #1a2332; color: #e8eef6; border: 1px solid #364760; border-radius: 9px; padding: 6px 9px; outline: none; user-select: text; }

@@ -1,4 +1,4 @@
-"""Генерирует src/assets/tray.png (иконка трея): парящий экран Робика."""
+"""Генерирует src/assets/tray.png (иконка трея): парящий экран Сени."""
 from PIL import Image, ImageDraw
 
 S = 64

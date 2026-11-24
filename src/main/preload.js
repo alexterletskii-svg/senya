@@ -1,7 +1,7 @@
 'use strict';
 const { contextBridge, ipcRenderer } = require('electron');
 
-contextBridge.exposeInMainWorld('robik', {
+contextBridge.exposeInMainWorld('senya', {
   act: (action, payload) => ipcRenderer.send('act', action, payload),
   layout: (w, h) => ipcRenderer.send('layout', { w, h }),
   dragStart: () => ipcRenderer.send('drag', { type: 'start' }),
@@ -13,4 +13,6 @@ contextBridge.exposeInMainWorld('robik', {
   onCelebrate: (cb) => ipcRenderer.on('celebrate', (_e, r) => cb(r)),
   onCursor: (cb) => ipcRenderer.on('cursor', (_e, p) => cb(p)),
   onEyesStart: (cb) => ipcRenderer.on('eyes-start', (_e, r) => cb(r)),
+  onExerciseStart: (cb) => ipcRenderer.on('exercise-start', (_e, r) => cb(r)),
+  onOpenPanel: (cb) => ipcRenderer.on('open-panel', () => cb()),
 });
