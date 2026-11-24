@@ -25,7 +25,10 @@ const DEFAULT_SETTINGS = {
   volume: 60,
   autoDnd: true,
   openAtLogin: false,
+  panelAutoCloseSec: 4,
 };
+
+const MIN_SETTING = { panelAutoCloseSec: 0 };
 
 const EYES_SECONDS = 20;
 const HAPPY_MS = 5000;
@@ -102,7 +105,7 @@ class Engine extends EventEmitter {
       if (typeof def === 'boolean') next[k] = Boolean(v);
       else {
         const n = Number(v);
-        if (Number.isFinite(n) && n >= 1 && n <= 600) next[k] = Math.round(n);
+        if (Number.isFinite(n) && n >= (MIN_SETTING[k] ?? 1) && n <= 600) next[k] = Math.round(n);
       }
     }
     this.settings = next;

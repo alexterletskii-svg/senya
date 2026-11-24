@@ -376,3 +376,14 @@ test('приветствие: число дел и серия', () => {
   e.greet();
   assert.match(reminders[0].text, /В списке дел: 2/);
 });
+
+test('настройка автозакрытия меню: 0 разрешён, мусор отклоняется', () => {
+  const { e } = makeEngine();
+  assert.equal(e.settings.panelAutoCloseSec, 4);
+  e.updateSettings({ panelAutoCloseSec: 0 });
+  assert.equal(e.settings.panelAutoCloseSec, 0);
+  e.updateSettings({ panelAutoCloseSec: -3 });
+  assert.equal(e.settings.panelAutoCloseSec, 0);
+  e.updateSettings({ panelAutoCloseSec: 8 });
+  assert.equal(e.settings.panelAutoCloseSec, 8);
+});
