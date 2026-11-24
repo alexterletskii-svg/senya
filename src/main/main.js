@@ -7,7 +7,6 @@ const { Engine } = require('../core/engine');
 const { Chat } = require('./ai');
 const { startFocusGuard } = require('./focusGuard');
 
-// Звуки Сени проигрываются без предварительного клика
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
 const HOTKEY = 'CommandOrControl+Alt+S';
@@ -18,14 +17,12 @@ let tray = null;
 let engine = null;
 let chat = null;
 let stopGuard = () => {};
-let anchor = null; // правый-нижний угол окна в экранных координатах
+let anchor = null;
 let drag = null;
-let silent = false; // пользователь спрятал Сеню
-let autoHidden = false; // полноэкранное приложение / презентация
+let silent = false;
+let autoHidden = false;
 let lastStateJson = '';
 let saveTimer = null;
-
-// ---------- хранение ----------
 
 function load() {
   try {
@@ -50,8 +47,6 @@ function saveSoon() {
   clearTimeout(saveTimer);
   saveTimer = setTimeout(save, 1500);
 }
-
-// ---------- окно ----------
 
 function defaultAnchor() {
   const wa = screen.getPrimaryDisplay().workArea;
@@ -105,7 +100,6 @@ function createWindow(saved) {
       sandbox: true,
     },
   });
-  // «screen-saver» держит окно над полноэкранными приложениями на Windows/macOS
   win.setAlwaysOnTop(true, 'screen-saver');
   win.setVisibleOnAllWorkspaces(true, { visibleOnFullScreen: true });
   win.setMenuBarVisibility(false);
@@ -114,7 +108,6 @@ function createWindow(saved) {
   win.webContents.once('did-finish-load', () => setTimeout(() => engine.greet(), 500));
 }
 
-// Показать меню Сени из любого места (горячая клавиша, второй запуск)
 function summon() {
   silent = false;
   autoHidden = false;
@@ -124,8 +117,6 @@ function summon() {
   send('open-panel');
   refreshTray();
 }
-
-// ---------- движок ----------
 
 function send(channel, payload) {
   if (win && !win.isDestroyed()) win.webContents.send(channel, payload);
@@ -152,13 +143,11 @@ function startEngine(saved) {
     try {
       engine.setIdle(powerMonitor.getSystemIdleTime());
     } catch {
-      /* простой недоступен — считаем, что пользователь активен */
     }
     engine.tick();
   }, 1000);
   setInterval(save, 30000);
 
-  // Позиция курсора для глаз Сени (в координатах экрана)
   let lastCursor = '';
   setInterval(() => {
     if (!win || win.isDestroyed() || !win.isVisible()) return;
@@ -169,7 +158,6 @@ function startEngine(saved) {
     win.webContents.send('cursor', p);
   }, 80);
 
-  // Полноэкранные приложения, презентации и звонки (только Windows)
   stopGuard = startFocusGuard((d) => {
     engine.setAutoDnd(d.dnd, d.reason);
     autoHidden = d.dnd && d.hide && engine.settings.autoDnd;
@@ -189,8 +177,6 @@ async function askAi(text) {
   const r = await chat.ask(text, chatContext());
   send('reminder', { id: Date.now() + 1, kind: 'chat', text: r.text, actions: [] });
 }
-
-// ---------- IPC ----------
 
 function wireIpc() {
   ipcMain.handle('get-state', () => ({ ...engine.snapshot(), ai: chat.available, platform: process.platform }));
@@ -236,8 +222,6 @@ function wireIpc() {
   });
 }
 
-// ---------- трей ----------
-
 function toggleSilent(value) {
   silent = value;
   applyVisibility();
@@ -271,8 +255,6 @@ function createTray() {
   tray.on('click', () => toggleSilent(!silent));
   refreshTray();
 }
-
-// ---------- запуск ----------
 
 if (!app.requestSingleInstanceLock()) {
   app.quit();

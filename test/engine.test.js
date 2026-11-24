@@ -28,15 +28,15 @@ test('три пропущенных перерыва → грустный; ack �
   const { e, advance } = makeEngine();
   e.updateSettings({ eyesEnabled: false, waterEnabled: false, postureEnabled: false });
   assert.equal(e.getMood(), 'energetic');
-  advance(30 * 60); // 1-е: pending
-  advance(30 * 60); // 2-е: missed=1
-  advance(30 * 60); // 3-е: missed=2
+  advance(30 * 60);
+  advance(30 * 60);
+  advance(30 * 60);
   assert.equal(e.getMood(), 'energetic');
-  advance(30 * 60); // 4-е: missed=3
+  advance(30 * 60);
   assert.equal(e.missedBreaks, 3);
   assert.equal(e.getMood(), 'sad');
   e.ackBreak();
-  assert.equal(e.getMood(), 'love'); // облегчение: сердечки
+  assert.equal(e.getMood(), 'love');
   assert.equal(e.stats.breaks, 1);
   advance(6);
   assert.equal(e.getMood(), 'energetic');
@@ -143,7 +143,7 @@ test('отложенная задача напоминает снова', () => 
 
 test('простой → спит; возвращение → бодрый и приветствие', () => {
   const { e, reminders, advance } = makeEngine();
-  advance(4 * 60, 4 * 60); // 4 минуты без ввода
+  advance(4 * 60, 4 * 60);
   assert.equal(e.getMood(), 'sleeping');
   advance(1, 0);
   assert.equal(e.getMood(), 'energetic');
@@ -153,9 +153,8 @@ test('простой → спит; возвращение → бодрый и п
 test('долгое отсутствие считается перерывом и снимает грусть', () => {
   const { e, advance } = makeEngine();
   e.updateSettings({ eyesEnabled: false, waterEnabled: false, postureEnabled: false });
-  advance(120 * 60); // много пропущенных
+  advance(120 * 60);
   assert.equal(e.getMood(), 'sad');
-  // ушёл на 6 минут (простой растёт), потом вернулся
   for (let i = 0; i < 6 * 60; i++) advance(1, i + 1);
   advance(1, 0);
   assert.equal(e.missedBreaks, 0);
@@ -165,7 +164,7 @@ test('долгое отсутствие считается перерывом и
 test('во сне напоминания не копятся, но задача по сроку будит', () => {
   const { e, reminders, advance } = makeEngine();
   e.addTask('через 10 минут позвонить');
-  advance(15 * 60, 15 * 60); // спим всё время
+  advance(15 * 60, 15 * 60);
   assert.deepEqual(kinds(reminders).filter((k) => k !== 'task-added' && k !== 'task'), []);
   assert.ok(kinds(reminders).includes('task'));
 });
@@ -216,9 +215,9 @@ test('гладить можно и спящего: он просыпается',
   e.pet();
   assert.equal(e.getMood(), 'love');
   advance(6, 4 * 60 + 6);
-  assert.equal(e.getMood(), 'energetic'); // всё ещё не спит после ласки
+  assert.equal(e.getMood(), 'energetic');
   advance(30, 5 * 60);
-  assert.equal(e.getMood(), 'sleeping'); // но простой продолжается
+  assert.equal(e.getMood(), 'sleeping');
 });
 
 test('poke будит спящего и не трогает бодрого', () => {
@@ -237,8 +236,6 @@ test('chat говорит фразу', () => {
   const r = reminders.find((x) => x.kind === 'chat');
   assert.ok(r && r.text.length > 5);
 });
-
-// ---------- не беспокоить ----------
 
 test('DND: таймерные напоминания молчат, дела приходят после выключения', () => {
   const { e, reminders, advance } = makeEngine();
@@ -285,8 +282,6 @@ test('в DND можно погладить и поболтать — это от
   assert.deepEqual(kinds(reminders).sort(), ['chat', 'love']);
 });
 
-// ---------- разминки ----------
-
 test('разминка: идёт по таймеру, потом засчитывается как перерыв', () => {
   const { e, reminders, advance } = makeEngine();
   const started = [];
@@ -314,8 +309,6 @@ test('разминка: отмена не засчитывается; подря
   assert.notEqual(e.snapshot().exercise.id, first);
 });
 
-// ---------- цель дня, серия, статистика ----------
-
 test('цель дня: награда и сердечки', () => {
   const { e, reminders } = makeEngine();
   e.updateSettings({ dailyGoal: 2 });
@@ -337,8 +330,8 @@ test('серия считается по дням подряд, пропуск �
     clock.t += 24 * 3600 * 1000;
     advance(1);
   }
-  assert.equal(e.streak(), 3); // сегодня ещё не выполнено, считаем со вчера
-  clock.t += 24 * 3600 * 1000; // день пропущен
+  assert.equal(e.streak(), 3);
+  clock.t += 24 * 3600 * 1000;
   advance(1);
   clock.t += 24 * 3600 * 1000;
   advance(1);
@@ -352,7 +345,7 @@ test('активные минуты считаются, во сне — нет',
   const { e, advance } = makeEngine();
   advance(180);
   assert.equal(e.stats.activeMin, 3);
-  advance(120, 4 * 60); // спим
+  advance(120, 4 * 60);
   assert.equal(e.stats.activeMin, 3);
 });
 
@@ -362,13 +355,11 @@ test('старый формат сохранения (stats) переезжае�
   assert.equal(e.persistable().history['2026-11-24'].pomodoros, 2);
 });
 
-// ---------- повторяющиеся задачи ----------
-
 test('повторяющаяся задача не закрывается, а переезжает', () => {
   const { e, advance } = makeEngine();
   const t = e.addTask('каждый день в 11:00 планёрка');
   const first = t.dueAt;
-  advance(61 * 60 + 5); // 10:00 -> 11:01
+  advance(61 * 60 + 5);
   e.completeTask(t.id);
   assert.equal(e.tasks[0].done, false);
   assert.ok(e.tasks[0].dueAt > first);
