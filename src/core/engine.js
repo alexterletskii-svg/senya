@@ -157,11 +157,13 @@ class Engine extends EventEmitter {
       if (peak >= this.settings.idleBreakMin * 60) this._restTaken();
       if (this._sleeping) {
         this._sleeping = false;
+        this.emit('event', 'wake');
         this._say(this._mk('wake', pick('wake', this._rng), []));
       }
     }
     if (!this._sleeping && s >= this.settings.idleSleepMin * 60) {
       this._sleeping = true;
+      this.emit('event', 'sleep');
     }
     this._emitState();
   }
@@ -371,6 +373,7 @@ class Engine extends EventEmitter {
     this.stats.exercises += 1;
     this._restTaken(true);
     this._happyUntil = this._now() + HAPPY_MS;
+    this.emit('event', 'exerciseDone');
     this._say(this._mk('exercise-done', pick('exerciseDone', this._rng), []), true);
   }
 

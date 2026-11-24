@@ -432,7 +432,8 @@
     }
   }
   document.addEventListener('keydown', (e) => {
-    if (e.key === 'Escape' && !panel.hidden) togglePanel();
+    if (e.key === 'Escape' && !stage.hidden) api.act('eyes:cancel');
+    else if (e.key === 'Escape' && !panel.hidden) togglePanel();
   });
 
   let press = null;
@@ -511,9 +512,10 @@
     stage.hidden = false;
     eyesT0 = performance.now();
     cancelAnimationFrame(eyesRaf);
-    const W = stage.clientWidth || 640;
-    const H = stage.clientHeight || 300;
+    api.act('fullscreen', true);
     const step = (now) => {
+      const W = stage.clientWidth || 640;
+      const H = stage.clientHeight || 300;
       const t = (now - eyesT0) / 1000;
       const w = (2 * Math.PI) / 7;
       dot.style.transform = `translate(${W / 2 + (W / 2 - 50) * Math.sin(w * t)}px, ${H / 2 - 12 + (H / 2 - 60) * Math.sin(2 * w * t)}px)`;
@@ -524,6 +526,7 @@
   function stopEyesUi() {
     cancelAnimationFrame(eyesRaf);
     stage.hidden = true;
+    api.act('fullscreen', false);
   }
   $('#eyes-cancel').addEventListener('click', () => api.act('eyes:cancel'));
 

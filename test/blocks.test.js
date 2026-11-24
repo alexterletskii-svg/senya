@@ -14,6 +14,14 @@ function makeRuntime(extra = {}) {
     sound: (n) => log.push(['sound', n]),
     pomodoroRunning: () => extra.pomo || false,
     openTasks: () => extra.tasks || 0,
+    isSad: () => extra.sad || false,
+    isQuiet: () => extra.quiet || false,
+    exercise: () => log.push(['exercise']),
+    eyes: () => log.push(['eyes']),
+    pomoStart: () => log.push(['pomoStart']),
+    pomoStop: () => log.push(['pomoStop']),
+    dnd: (m) => log.push(['dnd', m]),
+    addTask: (t) => log.push(['addTask', t]),
   };
   const waits = [];
   const rt = new Runtime({
@@ -168,5 +176,87 @@ test('каталог: у каждого блока есть подпись и п
       assert.ok(spec.label);
       assert.ok(Array.isArray(spec.params));
     }
+  }
+});
+
+test('счётчики: запомнить, прибавить, сравнить, подставить в фразу', async () => {
+  const { rt, log } = makeRuntime();
+  rt.load({ rules: [rule('r', 'click', [
+    { id: 'a', type: 'setVar', params: { name: 'счёт', value: 1 } },
+    { id: 'b', type: 'changeVar', params: { name: 'счёт', by: 4 } },
+    say('c', 'Счёт: {счёт}'),
+    { id: 'd', type: 'ifVar', params: { name: 'счёт', op: 'gt', value: 4 }, children: [say('e', 'много')] },
+    { id: 'f', type: 'ifVar', params: { name: 'счёт', op: 'lt', value: 4 }, children: [say('g', 'мало')] },
+    { id: 'h', type: 'ifVar', params: { name: 'счёт', op: 'eq', value: 5 }, children: [say('i', 'ровно')] },
+  ])] });
+  await rt.fire('click');
+  assert.deepEqual(log, [['say', 'Счёт: 5'], ['say', 'много'], ['say', 'ровно']]);
+});
+
+test('счётчик не выходит за пределы и живёт между запусками', async () => {
+  const { rt, log } = makeRuntime();
+  rt.load({ rules: [rule('r', 'click', [
+    { id: 'a', type: 'changeVar', params: { name: 'n', by: 999 } },
+    { id: 'b', type: 'changeVar', params: { name: 'n', by: 999 } },
+    say('c', '{n}'),
+  ])] });
+  await rt.fire('click');
+  await rt.fire('click');
+  assert.deepEqual(log, [['say', '999'], ['say', '999']]);
+});
+
+test('сказать одну из: выбирает по генератору', async () => {
+  const { rt, log } = makeRuntime({ rng: () => 0.99 });
+  rt.load({ rules: [rule('r', 'click', [{ id: 'a', type: 'sayRandom', params: { text: 'раз; два; три' } }])] });
+  await rt.fire('click');
+  assert.deepEqual(log, [['say', 'три']]);
+});
+
+test('действия управления: разминка, глаза, Pomodoro, тишина, дело', async () => {
+  const { rt, log } = makeRuntime();
+  rt.load({ rules: [rule('r', 'click', [
+    { id: 'a', type: 'exercise', params: {} },
+    { id: 'b', type: 'eyes', params: {} },
+    { id: 'c', type: 'pomoStart', params: {} },
+    { id: 'd', type: 'pomoStop', params: {} },
+    { id: 'e', type: 'dnd', params: { min: 5 } },
+    { id: 'f', type: 'addTask', params: { text: 'вода' } },
+  ])] });
+  await rt.fire('click');
+  assert.deepEqual(log, [['exercise'], ['eyes'], ['pomoStart'], ['pomoStop'], ['dnd', 5], ['addTask', 'вода']]);
+});
+
+test('добавление дел за один запуск ограничено', async () => {
+  const { rt, log } = makeRuntime();
+  const add = { id: 'a', type: 'addTask', params: { text: 'дело' } };
+  rt.load({ rules: [rule('r', 'click', [{ id: 'rp', type: 'repeat', params: { times: 10 }, children: [add, { id: 'w', type: 'wait', params: { sec: 1 } }] }])] });
+  await rt.fire('click');
+  assert.equal(log.filter((l) => l[0] === 'addTask').length, 3);
+});
+
+test('событие «В заданное время» срабатывает один раз в минуту', async () => {
+  const { rt, log } = makeRuntime({ hour: 9 });
+  rt.load({ rules: [rule('r', 'time', [say('a', 'доброе утро')], { at: '9:00' })] });
+  rt.tick(1);
+  await new Promise((r) => setImmediate(r));
+  rt.tick(1);
+  await new Promise((r) => setImmediate(r));
+  assert.equal(log.length, 1);
+});
+
+test('время и имя числа проверяются понятными сообщениями', () => {
+  const p = validate({ rules: [
+    rule('r', 'time', [{ id: 'v', type: 'setVar', params: { name: '1 2', value: 0 } }], { at: '25:99' }),
+  ] });
+  assert.match(p.find((x) => x.blockId === 'r').message, /09:30/);
+  assert.match(p.find((x) => x.blockId === 'v').message, /Название числа/);
+});
+
+test('условия «грущу» и «тишина»', async () => {
+  for (const [cond, extra] of [['sad', { sad: true }], ['quiet', { quiet: true }]]) {
+    const { rt, log } = makeRuntime(extra);
+    rt.load({ rules: [rule('r', 'click', [{ id: 'i', type: 'if', params: { cond }, children: [say('s', 'да')] }])] });
+    await rt.fire('click');
+    assert.equal(log.length, 1, cond);
   }
 });
