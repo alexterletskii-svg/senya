@@ -22,6 +22,11 @@ let chat = null;
 let stopGuard = () => {};
 let anchor = null;
 let drag = null;
+let fullMode = false;
+let lastSize = { w: 200, h: 240 };
+
+const ROBOT_W = 176;
+const ROBOT_H = 186;
 let silent = false;
 let autoHidden = false;
 let lastStateJson = '';
@@ -66,8 +71,19 @@ function clampAnchor(a, w, h) {
 
 function applyBounds(w, h) {
   if (!win) return;
-  anchor = clampAnchor(anchor, w, h);
-  win.setBounds({ x: anchor.x - w, y: anchor.y - h, width: w, height: h });
+  lastSize = { w, h };
+  if (fullMode) {
+    const wa = screen.getDisplayNearestPoint({ x: anchor.x - 1, y: anchor.y - 1 }).workArea;
+    win.setBounds({ x: wa.x, y: wa.y, width: wa.width, height: wa.height });
+    return;
+  }
+  const shown = clampAnchor(anchor, w, h);
+  win.setBounds({ x: shown.x - w, y: shown.y - h, width: w, height: h });
+}
+
+function setFullMode(on) {
+  fullMode = Boolean(on);
+  applyBounds(lastSize.w, lastSize.h);
 }
 
 function applyVisibility() {
@@ -149,6 +165,14 @@ function startEngine(saved) {
       sound: (n) => send('sound', n),
       pomodoroRunning: () => engine.pomo.phase === 'work' && engine.pomo.running,
       openTasks: () => engine.tasks.filter((t) => !t.done).length,
+      isSad: () => engine.getMood() === 'sad',
+      isQuiet: () => engine.isDnd(),
+      exercise: () => engine.startExercise(),
+      eyes: () => engine.startEyes(),
+      pomoStart: () => engine.startPomodoro(),
+      pomoStop: () => engine.stopPomodoro(),
+      dnd: (min) => engine.setDnd(min),
+      addTask: (text) => engine.addTask(text),
     },
   });
   runtime.onError = (err) => engine.sayCustom(`Ошибка в программе: ${err.message}`);
@@ -274,6 +298,7 @@ function wireIpc() {
     if (action === 'app:quit') return app.quit();
     if (action === 'app:hide') return toggleSilent(true);
     if (action === 'editor:open') return openEditor();
+    if (action === 'fullscreen') return setFullMode(payload);
     if (action === 'ai:ask') return void askAi(payload);
     if (action === 'settings:set' && payload && 'openAtLogin' in payload) {
       app.setLoginItemSettings({ openAtLogin: Boolean(payload.openAtLogin) });
@@ -290,6 +315,7 @@ function wireIpc() {
 
   ipcMain.on('layout', (_e, { w, h }) => {
     if (drag) return;
+    if (fullMode) return;
     if (Number.isFinite(w) && Number.isFinite(h) && w > 0 && h > 0) {
       applyBounds(Math.ceil(w), Math.ceil(h));
     }
@@ -304,9 +330,9 @@ function wireIpc() {
       win.setPosition(Math.round(drag.x + m.dx), Math.round(drag.y + m.dy));
     } else if (m.type === 'end' && drag) {
       const b = win.getBounds();
-      anchor = clampAnchor({ x: b.x + b.width, y: b.y + b.height }, b.width, b.height);
+      anchor = clampAnchor({ x: b.x + b.width, y: b.y + b.height }, ROBOT_W, ROBOT_H);
       drag = null;
-      applyBounds(b.width, b.height);
+      applyBounds(lastSize.w, lastSize.h);
       saveSoon();
     }
   });

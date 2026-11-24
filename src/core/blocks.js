@@ -20,13 +20,19 @@ const SOUNDS = {
   sleep: 'засыпаю',
 };
 
+const OPS = { gt: 'больше', lt: 'меньше', eq: 'равно' };
+
 const CONDITIONS = {
+  sad: 'я грущу',
+  quiet: 'включена тишина',
   pomodoro: 'идёт Pomodoro',
   morning: 'сейчас утро (до 12:00)',
   evening: 'сейчас вечер (после 18:00)',
   hasTasks: 'в списке есть дела',
   chance: 'выпал шанс 50%',
 };
+
+const NAME_RE = /^[A-Za-zА-Яа-яЁё_][A-Za-zА-Яа-яЁё0-9_]{0,15}$/;
 
 const options = (map) => Object.entries(map).map(([value, label]) => ({ value, label }));
 
@@ -39,6 +45,13 @@ const CATALOG = {
     pomoStart: { label: 'Когда начался Pomodoro', params: [] },
     pomoEnd: { label: 'Когда закончился Pomodoro', params: [] },
     taskDone: { label: 'Когда дело выполнено', params: [] },
+    wake: { label: 'Когда Сеня проснулся', params: [] },
+    sleep: { label: 'Когда Сеня заснул', params: [] },
+    exerciseDone: { label: 'Когда разминка закончена', params: [] },
+    time: {
+      label: 'В',
+      params: [{ key: 'at', kind: 'text', max: 5, def: '09:00', pattern: /^([01]?\d|2[0-3]):[0-5]\d$/, patternMessage: 'Время нужно писать так: 09:30', patternHint: 'Часы, двоеточие, минуты. Например 14:05.' }],
+    },
     every: {
       label: 'Каждые',
       params: [{ key: 'min', kind: 'number', min: 1, max: 240, def: 10, suffix: 'мин' }],
@@ -57,6 +70,36 @@ const CATALOG = {
       label: 'Издать звук',
       params: [{ key: 'name', kind: 'select', options: options(SOUNDS), def: 'happy' }],
     },
+    sayRandom: {
+      label: 'Сказать одну из',
+      params: [{ key: 'text', kind: 'text', max: 120, def: 'Привет!; Здорово!; Ура!', hint: 'Впиши несколько фраз через точку с запятой, Сеня выберет одну.' }],
+    },
+    exercise: { label: 'Запустить разминку', params: [] },
+    eyes: { label: 'Запустить гимнастику для глаз', params: [] },
+    pomoStart: { label: 'Запустить Pomodoro', params: [] },
+    pomoStop: { label: 'Остановить Pomodoro', params: [] },
+    dnd: {
+      label: 'Включить тишину на',
+      params: [{ key: 'min', kind: 'number', min: 1, max: 120, def: 10, suffix: 'мин' }],
+    },
+    addTask: {
+      label: 'Добавить дело',
+      params: [{ key: 'text', kind: 'text', max: 120, def: 'Выпить воды', hint: 'Впиши дело, например «позвонить маме» или «через 20 минут размяться».' }],
+    },
+    setVar: {
+      label: 'Запомнить число',
+      params: [
+        { key: 'name', kind: 'text', max: 16, def: 'счёт', pattern: NAME_RE, patternMessage: 'Название числа можно писать буквами и цифрами без пробелов.', patternHint: 'Например: счёт или клики2.' },
+        { key: 'value', kind: 'number', min: -999, max: 999, def: 0, suffix: '' },
+      ],
+    },
+    changeVar: {
+      label: 'Прибавить к числу',
+      params: [
+        { key: 'name', kind: 'text', max: 16, def: 'счёт', pattern: NAME_RE, patternMessage: 'Название числа можно писать буквами и цифрами без пробелов.', patternHint: 'Например: счёт или клики2.' },
+        { key: 'by', kind: 'number', min: -999, max: 999, def: 1, suffix: '' },
+      ],
+    },
     wait: {
       label: 'Подождать',
       params: [{ key: 'sec', kind: 'number', min: 1, max: 30, def: 2, suffix: 'сек' }],
@@ -65,6 +108,15 @@ const CATALOG = {
       label: 'Повторить',
       container: true,
       params: [{ key: 'times', kind: 'number', min: 1, max: 10, def: 3, suffix: 'раз' }],
+    },
+    ifVar: {
+      label: 'Если число',
+      container: true,
+      params: [
+        { key: 'name', kind: 'text', max: 16, def: 'счёт', pattern: NAME_RE, patternMessage: 'Название числа можно писать буквами и цифрами без пробелов.', patternHint: 'Например: счёт или клики2.' },
+        { key: 'op', kind: 'select', options: options(OPS), def: 'gt' },
+        { key: 'value', kind: 'number', min: -999, max: 999, def: 3, suffix: '' },
+      ],
     },
     if: {
       label: 'Если',
@@ -140,7 +192,9 @@ function validate(program) {
       const v = block.params[ps.key];
       if (ps.kind === 'text') {
         if (typeof v !== 'string' || !v.trim()) {
-          add(block.id, 'error', `В блоке «${spec.label}» ничего не написано.`, 'Впиши в поле текст, который должен сказать Сеня.');
+          add(block.id, 'error', `В блоке «${spec.label}» ничего не написано.`, ps.hint || 'Впиши в поле текст, который должен сказать Сеня.');
+        } else if (ps.pattern && !ps.pattern.test(v.trim())) {
+          add(block.id, 'error', ps.patternMessage, ps.patternHint);
         } else if (v.length > ps.max) {
           add(block.id, 'error', `Текст слишком длинный: ${v.length} символов, а можно ${ps.max}.`, 'Сократи фразу или раздели на два блока «Сказать».');
         }
@@ -181,7 +235,7 @@ function validate(program) {
         if (b.type === 'repeat') {
           const times = numberOf(b.params, spec.params[0]);
           const hasWait = containsType(kids, 'wait');
-          const talks = containsType(kids, 'say') || containsType(kids, 'sound');
+          const talks = ['say', 'sayRandom', 'sound', 'addTask'].some((t) => containsType(kids, t));
           if (Number.isFinite(times) && times > 3 && talks && !hasWait && !sawWait) {
             add(b.id, 'warn', 'Сеня будет повторять очень быстро, и фразы сольются.', 'Добавь внутрь «Повторить» блок «Подождать» хотя бы на 2 секунды.');
           }
@@ -202,7 +256,7 @@ function validate(program) {
     if (!r.body.length) {
       add(r.id, 'warn', `Под событием «${spec.label}» нет ни одного действия.`, 'Нажми на блок действия слева, например «Сказать».');
     }
-    if (r.event.type !== 'every') {
+    if (r.event.type !== 'every' && r.event.type !== 'time') {
       if (seenEvents.has(r.event.type)) {
         add(r.id, 'warn', `Событие «${spec.label}» уже есть выше: сработают оба правила по очереди.`, 'Если так и задумано, всё в порядке. Если нет, объедини их в одно.');
       }
@@ -225,6 +279,9 @@ function containsType(blocks, type) {
 
 class Cancelled extends Error {}
 
+const MAX_TASKS_PER_RUN = 3;
+const clampNum = (n) => Math.max(-999, Math.min(999, Number.isFinite(n) ? n : 0));
+
 class Runtime {
   constructor({ api, sleep, rng = Math.random, now = () => new Date() }) {
     this.api = api;
@@ -235,6 +292,8 @@ class Runtime {
     this.running = new Map();
     this.token = 0;
     this._everyAcc = new Map();
+    this.vars = new Map();
+    this._lastTime = new Map();
     this.onError = () => {};
   }
 
@@ -245,6 +304,8 @@ class Runtime {
       && !validate({ rules: [r] }).some((p) => p.level === 'error')
     ));
     this._everyAcc = new Map();
+    this.vars = new Map();
+    this._lastTime = new Map();
   }
 
   stopAll() {
@@ -261,7 +322,16 @@ class Runtime {
   }
 
   tick(dtSec) {
+    const d = this.now();
+    const stamp = `${d.getFullYear()}-${d.getMonth()}-${d.getDate()} ${d.getHours()}:${d.getMinutes()}`;
     for (const rule of this.rules) {
+      if (rule.event.type === 'time') {
+        const [h, m] = String(rule.event.params.at).trim().split(':').map(Number);
+        if (d.getHours() === h && d.getMinutes() === m && this._lastTime.get(rule.id) !== stamp) {
+          this._lastTime.set(rule.id, stamp);
+          this.run(rule);
+        }
+      }
       if (rule.event.type !== 'every') continue;
       const every = Math.max(1, Number(rule.event.params.min) || 10) * 60;
       const acc = (this._everyAcc.get(rule.id) || 0) + dtSec;
@@ -278,7 +348,7 @@ class Runtime {
     if (this.running.has(rule.id)) return;
     const token = this.token;
     this.running.set(rule.id, true);
-    const ctx = { token, steps: 0 };
+    const ctx = { token, steps: 0, tasks: 0 };
     try {
       await this._exec(rule.body, ctx);
     } catch (e) {
@@ -294,7 +364,36 @@ class Runtime {
       if (++ctx.steps > LIMITS.steps) throw new Error('Программа сделала слишком много шагов и была остановлена.');
       const p = b.params;
       switch (b.type) {
-        case 'say': this.api.say(String(p.text)); break;
+        case 'say': this.api.say(this._fill(String(p.text))); break;
+        case 'sayRandom': {
+          const parts = String(p.text).split(';').map((x) => x.trim()).filter(Boolean);
+          if (parts.length) this.api.say(this._fill(parts[Math.floor(this.rng() * parts.length) % parts.length]));
+          break;
+        }
+        case 'exercise': this.api.exercise(); break;
+        case 'eyes': this.api.eyes(); break;
+        case 'pomoStart': this.api.pomoStart(); break;
+        case 'pomoStop': this.api.pomoStop(); break;
+        case 'dnd': this.api.dnd(Number(p.min)); break;
+        case 'addTask':
+          if (ctx.tasks < MAX_TASKS_PER_RUN) {
+            ctx.tasks += 1;
+            this.api.addTask(String(p.text));
+          }
+          break;
+        case 'setVar': this.vars.set(String(p.name).trim(), clampNum(Number(p.value))); break;
+        case 'changeVar': {
+          const key = String(p.name).trim();
+          this.vars.set(key, clampNum((this.vars.get(key) || 0) + Number(p.by)));
+          break;
+        }
+        case 'ifVar': {
+          const v = this.vars.get(String(p.name).trim()) || 0;
+          const n = Number(p.value);
+          const ok = p.op === 'gt' ? v > n : p.op === 'lt' ? v < n : v === n;
+          if (ok) await this._exec(b.children || [], ctx);
+          break;
+        }
         case 'emotion': this.api.emotion(String(p.mood)); break;
         case 'sound': this.api.sound(String(p.name)); break;
         case 'wait': await this.sleep(Number(p.sec)); break;
@@ -312,9 +411,15 @@ class Runtime {
     if (this.token !== ctx.token) throw new Cancelled();
   }
 
+  _fill(text) {
+    return text.replace(/\{([^{}]{1,16})\}/g, (m, name) => (this.vars.has(name.trim()) ? String(this.vars.get(name.trim())) : m));
+  }
+
   _cond(name) {
     const hour = this.now().getHours();
     switch (name) {
+      case 'sad': return Boolean(this.api.isSad());
+      case 'quiet': return Boolean(this.api.isQuiet());
       case 'pomodoro': return Boolean(this.api.pomodoroRunning());
       case 'morning': return hour < 12;
       case 'evening': return hour >= 18;

@@ -229,7 +229,7 @@ details summary:hover { color: #ffb84d; }
 .settings label.chk { grid-column: 1 / -1; display: flex; gap: 8px; align-items: center; }
 .settings input[type=number] { width: 70px; }
 
-#eyes-stage { position: relative; width: 640px; height: 300px; background: rgba(8, 9, 8, .94); border: 1px solid #ffb84d; margin-right: 6px; overflow: hidden; }
-#eyes-dot { position: absolute; left: 0; top: 0; width: 18px; height: 18px; margin: -9px 0 0 -9px; background: #ffb84d; box-shadow: 0 0 0 3px rgba(255, 184, 77, .25); }
-#eyes-info { position: absolute; left: 0; right: 0; bottom: 10px; text-align: center; color: #b8b2a0; font-size: 12px; display: flex; gap: 10px; justify-content: center; align-items: center; }
-#eyes-info b { font-size: 16px; color: #ffb84d; font-weight: 400; font-variant-numeric: tabular-nums; }
+#eyes-stage { position: fixed; inset: 0; z-index: 50; background: rgba(8, 9, 8, .96); }
+#eyes-dot { position: absolute; left: 0; top: 0; width: 36px; height: 36px; margin: -18px 0 0 -18px; background: #ffb84d; box-shadow: 0 0 0 6px rgba(255, 184, 77, .22); }
+#eyes-info { position: absolute; left: 0; right: 0; bottom: 28px; text-align: center; color: #b8b2a0; font-size: 16px; display: flex; gap: 14px; justify-content: center; align-items: center; }
+#eyes-info b { font-size: 22px; color: #ffb84d; font-weight: 400; font-variant-numeric: tabular-nums; }
