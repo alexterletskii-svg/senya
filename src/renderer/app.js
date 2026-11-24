@@ -146,7 +146,7 @@
       }));
     const sad = r.kind === 'break' && state && state.mood === 'sad';
     bubblesEl.replaceChildren(el('div', { class: `bubble kind-${r.kind}${sad ? ' sad' : ''}` }, [
-      el('button', { class: 'x', text: '✕', title: 'Закрыть', onclick: closeBubble }),
+      el('button', { class: 'x', text: 'x', title: 'Закрыть', onclick: closeBubble }),
       el('div', { class: 'text', text: r.text }),
       actions.length ? el('div', { class: 'actions' }, actions) : null,
     ]));
@@ -185,7 +185,7 @@
     P.pomoStart = el('button', { text: 'Старт', onclick: () => api.act(pomoPrimaryAction()) });
     P.pomoSkip = el('button', { class: 'ghost', text: 'Пропуск', onclick: () => api.act('pomo:skip') });
     P.pomoStop = el('button', { class: 'ghost', text: 'Стоп', onclick: () => api.act('pomo:stop') });
-    P.dndBtn = el('button', { class: 'ghost', text: '🔕 Тишина', onclick: () => api.act('dnd:set', state && state.dnd.manual ? 0 : 60) });
+    P.dndBtn = el('button', { class: 'ghost', text: 'Тишина', onclick: () => api.act('dnd:set', state && state.dnd.manual ? 0 : 60) });
 
     P.input = el('input', { type: 'text', placeholder: 'Задача… «через 20 мин позвонить»', maxlength: '200' });
     P.input.addEventListener('keydown', (e) => { if (e.key === 'Enter') addTask(); });
@@ -203,9 +203,9 @@
 
     panel.replaceChildren(
       el('div', { class: 'p-head' }, [
-        el('b', { text: '🤖 Сеня' }),
+        el('b', { text: 'senya@desktop:~$' }),
         P.dndChip,
-        el('button', { class: 'ghost', text: '✕', title: 'Закрыть меню', onclick: togglePanel }),
+        el('button', { class: 'ghost', text: 'x', title: 'Закрыть меню', onclick: togglePanel }),
       ]),
       P.stats,
       el('div', { class: 'card' }, [
@@ -213,27 +213,27 @@
         el('div', { class: 'row' }, [P.pomoStart, P.pomoSkip, P.pomoStop]),
       ]),
       el('div', { class: 'grid3' }, [
-        el('button', { class: 'ghost', text: '👀 Глаза', title: 'Гимнастика для глаз', onclick: () => api.act('eyes:start') }),
-        el('button', { class: 'ghost', text: '🤸 Разминка', title: 'Упражнение на 30 секунд', onclick: () => api.act('exercise:start') }),
-        el('button', { class: 'ghost', text: '🧘 Размялся', title: 'Засчитать перерыв', onclick: () => api.act('break:ack') }),
-        el('button', { class: 'ghost', text: '💗 Погладить', onclick: () => api.act('pet') }),
-        el('button', { class: 'ghost', text: '💬 Поболтать', onclick: () => api.act('chat') }),
+        el('button', { class: 'ghost', text: 'Глаза', title: 'Гимнастика для глаз', onclick: () => api.act('eyes:start') }),
+        el('button', { class: 'ghost', text: 'Разминка', title: 'Упражнение на 30 секунд', onclick: () => api.act('exercise:start') }),
+        el('button', { class: 'ghost', text: 'Размялся', title: 'Засчитать перерыв', onclick: () => api.act('break:ack') }),
+        el('button', { class: 'ghost', text: 'Погладить', onclick: () => api.act('pet') }),
+        el('button', { class: 'ghost', text: 'Поболтать', onclick: () => api.act('chat') }),
         P.dndBtn,
       ]),
       el('div', { class: 'card' }, [
-        el('h3', { text: 'Список дел' }),
-        el('div', { class: 'task-add' }, [P.input, el('button', { text: '＋', onclick: addTask })]),
+        el('h3', { text: 'СПИСОК ДЕЛ' }),
+        el('div', { class: 'task-add' }, [P.input, el('button', { text: '+', onclick: addTask })]),
         el('div', { class: 'hint', text: '«в 15:30 созвон», «завтра в 9 отчёт», «каждый день в 9 зарядка», «каждые 2 часа вода»' }),
         P.taskList,
         P.clearDone,
       ]),
       el('div', { class: 'card' }, [
-        el('h3', { text: 'Спросить Сеню' }),
+        el('h3', { text: 'СПРОСИТЬ СЕНЮ' }),
         P.ask,
         P.askHint,
       ]),
       el('div', { class: 'card' }, [
-        el('h3', { text: 'Неделя' }),
+        el('h3', { text: 'НЕДЕЛЯ' }),
         P.streak, P.week, P.weekSum,
       ]),
       el('details', {}, [el('summary', { text: 'Настройки' }), P.settings]),
@@ -265,7 +265,7 @@
   }
 
   const fmt = (sec) => `${String(Math.floor(sec / 60)).padStart(2, '0')}:${String(sec % 60).padStart(2, '0')}`;
-  const PHASE = { idle: 'Не запущен', work: '🔨 Работа', break: '☕ Перерыв', longBreak: '🌴 Длинный перерыв' };
+  const PHASE = { idle: 'ОЖИДАНИЕ', work: 'РАБОТА', break: 'ПЕРЕРЫВ', longBreak: 'ДЛИННЫЙ ПЕРЕРЫВ' };
 
   function dueLabel(ts) {
     const d = new Date(ts);
@@ -281,17 +281,17 @@
 
   function renderPanel(s) {
     const st = s.stats;
-    P.stats.textContent = `Сегодня: ☕ ${st.breaks} · 🤸 ${st.exercises} · 🍅 ${st.pomodoros} · ✅ ${st.tasks} · активен ${st.activeMin} мин`;
+    P.stats.textContent = `сегодня: перерывы=${st.breaks} разминки=${st.exercises} помодоро=${st.pomodoros} дела=${st.tasks} актив=${st.activeMin}м`;
 
     const d = s.dnd;
     P.dndChip.hidden = !d.active;
     if (d.active) {
-      P.dndChip.textContent = d.auto ? `🔕 ${DND_REASON[d.reason] || 'тихо'}` : '🔕 тихо';
+      P.dndChip.textContent = d.auto ? `тихо: ${DND_REASON[d.reason] || 'авто'}` : 'тихо';
       P.dndChip.title = d.auto ? 'Сеня молчит: ' + (DND_REASON[d.reason] || 'авто') : 'Режим «Не беспокоить»';
     }
     P.dndBtn.textContent = d.manual
-      ? `🔔 Вернуть${d.untilMs ? ` (ещё ${Math.max(1, Math.round((d.untilMs - Date.now()) / 60000))} мин)` : ''}`
-      : '🔕 Тишина 1 ч';
+      ? `Вернуть${d.untilMs ? ` (ещё ${Math.max(1, Math.round((d.untilMs - Date.now()) / 60000))} мин)` : ''}`
+      : 'Тишина 1 ч';
 
     const p = s.pomodoro;
     P.pomoTime.textContent = p.phase === 'idle' ? fmt(s.settings.workMin * 60) : fmt(p.remainingSec);
@@ -326,7 +326,7 @@
     const goal = s.settings.dailyGoal;
     const max = Math.max(goal, ...s.week.map((d) => d.breaks), 1);
     P.streak.textContent = s.streak > 0
-      ? `🔥 Серия: ${s.streak} дн. (цель — ${goal} перерывов в день)`
+      ? `серия: ${s.streak} дн. · цель: ${goal} в день`
       : `Цель дня — ${goal} перерывов. Серия начнётся с первого выполненного дня.`;
     P.week.replaceChildren(...s.week.map((d, i) => el('div', {
       class: `wd${i === 6 ? ' today' : ''}${d.goal ? ' goal' : ''}`,
@@ -354,8 +354,8 @@
       return el('div', { class: `task${t.done ? ' done' : ''}` }, [
         cb,
         el('span', { class: 't', text: t.text }),
-        t.dueAt ? el('span', { class: `due${!t.done && t.dueAt < now ? ' late' : ''}`, title: t.repeatText || '', text: `${t.repeat ? '🔁' : '⏰'} ${dueLabel(t.dueAt)}` }) : null,
-        el('button', { class: 'rm', text: '✕', title: 'Удалить', onclick: () => api.act('task:remove', t.id) }),
+        t.dueAt ? el('span', { class: `due${!t.done && t.dueAt < now ? ' late' : ''}`, title: t.repeatText || '', text: `${t.repeat ? '@повтор' : '@'} ${dueLabel(t.dueAt)}` }) : null,
+        el('button', { class: 'rm', text: 'x', title: 'Удалить', onclick: () => api.act('task:remove', t.id) }),
       ]);
     }));
   }
@@ -506,7 +506,7 @@
   function renderExercise(ex) {
     exCard.hidden = !ex.active;
     if (!ex.active) return;
-    $('.ex-title', exCard).textContent = `🤸 ${ex.title}`;
+    $('.ex-title', exCard).textContent = `> ${ex.title}`;
     $('.ex-steps', exCard).textContent = ex.steps;
     $('.ex-fill', exCard).style.width = `${Math.round(((ex.total - ex.remainingSec) / ex.total) * 100)}%`;
     $('.ex-left', exCard).textContent = `${ex.remainingSec} с`;
