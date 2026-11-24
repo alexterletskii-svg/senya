@@ -1,5 +1,8 @@
 'use strict';
 
+const path = require('node:path');
+const { readFile } = require('./dotenv');
+
 const SYSTEM_PROMPT =
   'Ты — Сеня, маленький парящий робот-напарник на рабочем столе пользователя. ' +
   'Говоришь по-русски, коротко (1–3 предложения), тепло и с лёгким юмором. ' +
@@ -10,7 +13,7 @@ const SYSTEM_PROMPT =
 const MAX_HISTORY = 8;
 const TIMEOUT_MS = 20000;
 
-function loadEnv(base = process.env) {
+function loadEnv(base = process.env, dotenvFile = path.join(__dirname, '..', '..', '.env')) {
   let embedded = {};
   try {
     embedded = require('./embedded.json');
@@ -18,7 +21,7 @@ function loadEnv(base = process.env) {
     embedded = {};
   }
   const env = { ...base };
-  for (const [k, v] of Object.entries(embedded)) {
+  for (const [k, v] of Object.entries({ ...embedded, ...readFile(dotenvFile) })) {
     if (v && !(env[k] && String(env[k]).trim())) env[k] = v;
   }
   return env;

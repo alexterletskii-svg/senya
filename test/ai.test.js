@@ -66,3 +66,17 @@ test('loadEnv: переменная окружения главнее встро
   assert.equal(loadEnv({ DEEPSEEK_API_KEY: 'sk-env' }).DEEPSEEK_API_KEY, 'sk-env');
   assert.equal(loadEnv({}).DEEPSEEK_API_KEY, undefined);
 });
+
+test('.env: разбор и чтение ключа', () => {
+  const { parse } = require('../src/main/dotenv');
+  assert.deepEqual(parse('# c\nDEEPSEEK_API_KEY="sk-1"\nexport A=b\n\nBAD LINE'), { DEEPSEEK_API_KEY: 'sk-1', A: 'b' });
+  const fs = require('node:fs');
+  const os = require('node:os');
+  const path = require('node:path');
+  const f = path.join(os.tmpdir(), 'senya-test.env');
+  fs.writeFileSync(f, 'DEEPSEEK_API_KEY=sk-file\n');
+  const { loadEnv } = require('../src/main/ai');
+  assert.equal(loadEnv({}, f).DEEPSEEK_API_KEY, 'sk-file');
+  assert.equal(loadEnv({ DEEPSEEK_API_KEY: 'sk-env' }, f).DEEPSEEK_API_KEY, 'sk-env');
+  fs.unlinkSync(f);
+});
