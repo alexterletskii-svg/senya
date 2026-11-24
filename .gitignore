@@ -3,3 +3,4 @@ dist/
 *.log
 src/main/embedded.json
 .env
+.env
