@@ -1,7 +1,7 @@
 'use strict';
 const test = require('node:test');
 const assert = require('node:assert/strict');
-const { validate, sanitize, Runtime, CATALOG } = require('../src/core/blocks');
+const { validate, sanitize, Runtime, CATALOG, serialize, parseImport, examples } = require('../src/core/blocks');
 
 const say = (id, text) => ({ id, type: 'say', params: { text } });
 const rule = (id, type, body, params = {}) => ({ id, event: { type, params }, body });
@@ -259,4 +259,57 @@ test('условия «грущу» и «тишина»', async () => {
     await rt.fire('click');
     assert.equal(log.length, 1, cond);
   }
+});
+
+test('примеры: все проходят проверку и запускаются', async () => {
+  const list = examples();
+  assert.ok(list.length >= 4);
+  for (const ex of list) {
+    assert.deepEqual(validate(ex.program), [], ex.name);
+    const { rt, log } = makeRuntime({ tasks: 1 });
+    rt.load(ex.program);
+    assert.ok(rt.rules.length > 0, ex.name);
+    const type = ex.program.rules[0].event.type;
+    if (['click', 'pet'].includes(type)) {
+      await rt.fire(type);
+      assert.ok(log.length > 0, ex.name);
+    }
+  }
+});
+
+test('примеры для малышей используют только простые блоки', () => {
+  for (const ex of examples().filter((e) => e.simple)) {
+    for (const r of ex.program.rules) {
+      assert.ok(CATALOG.events[r.event.type].simple, ex.name);
+      for (const b of r.body) assert.ok(CATALOG.actions[b.type].simple && !b.children, ex.name);
+    }
+  }
+});
+
+test('экспорт и импорт: программа переживает круг, id обновляются', () => {
+  const src = examples()[2].program;
+  const text = serialize(src, 'мой счётчик');
+  const r = parseImport(text);
+  assert.equal(r.ok, true);
+  assert.equal(r.name, 'мой счётчик');
+  assert.deepEqual(r.problems, []);
+  assert.equal(r.program.rules.length, src.rules.length);
+  assert.notEqual(r.program.rules[0].id, src.rules[0].id);
+  assert.equal(r.program.rules[0].body[2].children.length, 3);
+});
+
+test('импорт отклоняет мусор, чужие файлы и огромные файлы', () => {
+  assert.equal(parseImport('').ok, false);
+  assert.equal(parseImport('не json').ok, false);
+  assert.equal(parseImport('{"a":1}').ok, false);
+  assert.equal(parseImport(JSON.stringify({ format: 'other', program: { rules: [] } })).ok, false);
+  assert.equal(parseImport('x'.repeat(200000)).ok, false);
+  assert.equal(parseImport(null).ok, false);
+});
+
+test('импорт с ошибками в блоках возвращает понятные проблемы', () => {
+  const text = JSON.stringify({ format: 'senya-program', version: 1, program: { rules: [{ id: 'a', event: { type: 'click', params: {} }, body: [{ id: 'b', type: 'say', params: { text: '' } }] }] } });
+  const r = parseImport(text);
+  assert.equal(r.ok, true);
+  assert.equal(r.problems[0].level, 'error');
 });

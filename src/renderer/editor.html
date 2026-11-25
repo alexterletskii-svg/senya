@@ -11,10 +11,15 @@
     <b>senya@constructor:~$</b>
     <span id="status" class="dim"></span>
     <span class="spacer"></span>
-    <button id="btn-example" class="ghost">Пример</button>
+    <button id="btn-mode" class="ghost" title="Простой режим для малышей">Режим: полный</button>
+    <button id="btn-examples" class="ghost">Примеры</button>
+    <button id="btn-save" class="ghost">Сохранить</button>
+    <button id="btn-load" class="ghost">Загрузить</button>
+    <input id="file" type="file" accept=".json,application/json" hidden>
     <button id="btn-run">Запустить правило</button>
     <button id="btn-stop" class="ghost">Стоп</button>
   </header>
+  <div id="menu" hidden></div>
   <main>
     <aside id="palette"></aside>
     <section id="work"></section>

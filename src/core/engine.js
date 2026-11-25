@@ -27,6 +27,15 @@ const DEFAULT_SETTINGS = {
   autoDnd: true,
   openAtLogin: false,
   panelAutoCloseSec: 4,
+  bodyColor: 'violet',
+  eyeColor: 'amber',
+  eyeShape: 'rect',
+};
+
+const ENUM_SETTINGS = {
+  bodyColor: ['violet', 'teal', 'coral', 'green', 'blue', 'graphite'],
+  eyeColor: ['amber', 'cyan', 'green', 'pink', 'white'],
+  eyeShape: ['rect', 'round', 'narrow'],
 };
 
 const MIN_SETTING = { panelAutoCloseSec: 0 };
@@ -106,7 +115,9 @@ class Engine extends EventEmitter {
     for (const [k, v] of Object.entries(patch || {})) {
       if (!(k in DEFAULT_SETTINGS)) continue;
       const def = DEFAULT_SETTINGS[k];
-      if (typeof def === 'boolean') next[k] = Boolean(v);
+      if (ENUM_SETTINGS[k]) {
+        if (ENUM_SETTINGS[k].includes(v)) next[k] = v;
+      } else if (typeof def === 'boolean') next[k] = Boolean(v);
       else {
         const n = Number(v);
         if (Number.isFinite(n) && n >= (MIN_SETTING[k] ?? 1) && n <= 600) next[k] = Math.round(n);
@@ -651,4 +662,4 @@ class Engine extends EventEmitter {
   }
 }
 
-module.exports = { Engine, DEFAULT_SETTINGS, EYES_SECONDS };
+module.exports = { Engine, DEFAULT_SETTINGS, ENUM_SETTINGS, EYES_SECONDS };
