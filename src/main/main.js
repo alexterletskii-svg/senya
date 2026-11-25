@@ -6,7 +6,7 @@ const { app, BrowserWindow, Tray, Menu, ipcMain, nativeImage, screen, powerMonit
 const { Engine } = require('../core/engine');
 const { Chat } = require('./ai');
 const { startFocusGuard } = require('./focusGuard');
-const { Runtime, CATALOG, validate } = require('../core/blocks');
+const { Runtime, CATALOG, validate, serialize, parseImport, examples } = require('../core/blocks');
 
 app.commandLine.appendSwitch('autoplay-policy', 'no-user-gesture-required');
 
@@ -260,10 +260,18 @@ function findRule(ruleId) {
 function wireProgramIpc() {
   ipcMain.handle('program:get', () => ({
     program: engine.program,
-    catalog: CATALOG,
+    catalog: JSON.parse(JSON.stringify(CATALOG)),
     problems: validate(engine.program),
     ai: chat.available,
   }));
+  ipcMain.handle('program:export', (_e, name) => serialize(engine.program, name));
+  ipcMain.handle('program:import', (_e, text) => {
+    const r = parseImport(text);
+    if (!r.ok) return r;
+    engine.setProgram(r.program);
+    return { ...r, program: engine.program, problems: validate(engine.program) };
+  });
+  ipcMain.handle('program:examples', () => examples());
   ipcMain.handle('program:check', (_e, program) => validate(program));
   ipcMain.handle('program:save', (_e, program) => {
     engine.setProgram(program);

@@ -2,7 +2,7 @@
 const path = require('node:path');
 const fs = require('node:fs');
 const { app, BrowserWindow, ipcMain } = require('electron');
-const { CATALOG, validate, sanitize } = require('../src/core/blocks');
+const { CATALOG, validate, sanitize, examples, parseImport, serialize } = require('../src/core/blocks');
 
 const out = path.resolve(process.env.SHOTS_DIR || 'shots');
 fs.mkdirSync(out, { recursive: true });
@@ -25,7 +25,14 @@ let program = sanitize({
 });
 
 app.whenReady().then(async () => {
-  ipcMain.handle('program:get', () => ({ program, catalog: CATALOG, problems: validate(program), ai: true }));
+  ipcMain.handle('program:get', () => ({ program, catalog: JSON.parse(JSON.stringify(CATALOG)), problems: validate(program), ai: true }));
+  ipcMain.handle('program:examples', () => examples());
+  ipcMain.handle('program:export', (_e, name) => serialize(program, name));
+  ipcMain.handle('program:import', (_e, text) => {
+    const r = parseImport(text);
+    if (r.ok) program = r.program;
+    return r;
+  });
   ipcMain.handle('program:check', (_e, p) => validate(p));
   ipcMain.handle('program:save', (_e, p) => { program = sanitize(p); return validate(program); });
   ipcMain.handle('program:run', () => ({ ok: true }));
@@ -43,5 +50,20 @@ app.whenReady().then(async () => {
   await win.webContents.executeJavaScript("document.querySelector('.problem button').click()");
   await sleep(700);
   fs.writeFileSync(path.join(out, 'editor-ask.png'), (await win.webContents.capturePage()).toPNG());
+  const run = (code) => win.webContents.executeJavaScript(code);
+  const snap = async (name) => fs.writeFileSync(path.join(out, `${name}.png`), (await win.webContents.capturePage()).toPNG());
+  await run("document.querySelector('#btn-examples').click(); 0");
+  await sleep(400);
+  await snap('editor-examples');
+  await run("window.confirm = () => true; [...document.querySelectorAll('#menu .item')][0].click(); 0");
+  await sleep(500);
+  await run("document.querySelector('#btn-mode').click(); 0");
+  await sleep(500);
+  await snap('editor-simple');
+  await run("document.querySelector('#btn-mode').click(); 0");
+  const text = serialize(program, 'тест');
+  await run(`(async () => { const f = new File([${JSON.stringify(text)}], 'p.json', { type: 'application/json' }); const dt = new DataTransfer(); dt.items.add(f); const inp = document.querySelector('#file'); inp.files = dt.files; inp.dispatchEvent(new Event('change')); })(); 0`);
+  await sleep(600);
+  console.log('status:', await run("document.querySelector('#status').textContent"));
   app.quit();
 });

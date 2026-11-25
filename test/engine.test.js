@@ -413,3 +413,12 @@ test('конструктор: события движка, своя эмоция
   e.dispatch('program:set', { rules: [{ id: 'r', event: { type: 'click', params: {} }, body: [] }] });
   assert.equal(e.persistable().program.rules.length, 1);
 });
+
+test('внешний вид: допустимые значения принимаются, остальные отклоняются', () => {
+  const { e } = makeEngine();
+  assert.equal(e.settings.bodyColor, 'violet');
+  e.updateSettings({ bodyColor: 'teal', eyeColor: 'cyan', eyeShape: 'round' });
+  assert.deepEqual([e.settings.bodyColor, e.settings.eyeColor, e.settings.eyeShape], ['teal', 'cyan', 'round']);
+  e.updateSettings({ bodyColor: 'red', eyeShape: 5 });
+  assert.deepEqual([e.settings.bodyColor, e.settings.eyeShape], ['teal', 'round']);
+});

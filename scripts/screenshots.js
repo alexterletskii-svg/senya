@@ -12,6 +12,7 @@ engine.addTask('через 20 минут позвонить маме');
 engine.addTask('в 15:30 созвон по проекту');
 engine.addTask('Написать отчёт');
 engine.completeTask(3);
+engine.updateSettings({ bodyColor: process.env.LOOK_BODY || 'violet', eyeColor: process.env.LOOK_EYE || 'amber', eyeShape: process.env.LOOK_SHAPE || 'rect' });
 const base = engine.snapshot();
 const state = (patch) => ({ ...base, ...patch });
 const sleep = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -71,6 +72,9 @@ app.whenReady().then(async () => {
 
   await win.webContents.executeJavaScript("document.getElementById('robot-wrap').dispatchEvent(new PointerEvent('pointerdown',{button:0,pointerId:1,screenX:5,screenY:5}));document.getElementById('robot-wrap').dispatchEvent(new PointerEvent('pointerup',{button:0,pointerId:1,screenX:5,screenY:5}));");
   send('state', state({ mood: 'focused', hardHat: true, pomodoro: { phase: 'work', running: true, remainingSec: 1234, cycle: 1 } }));
+  await win.webContents.executeJavaScript("document.querySelector('#panel details').open = true; document.querySelector('.look-row').scrollIntoView(); 0");
+  await sleep(400);
+  await win.webContents.executeJavaScript("document.querySelector('.look-row').scrollIntoView(); 0");
   await shot('panel');
 
   await win.webContents.executeJavaScript("document.getElementById('robot-wrap').dispatchEvent(new PointerEvent('pointerdown',{button:0,pointerId:1,screenX:5,screenY:5}));document.getElementById('robot-wrap').dispatchEvent(new PointerEvent('pointerup',{button:0,pointerId:1,screenX:5,screenY:5}));");

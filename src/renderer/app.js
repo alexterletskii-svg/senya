@@ -384,8 +384,71 @@
     ['openAtLogin', 'Запускать при входе в систему'],
   ];
 
+  const BODY_COLORS = {
+    violet: ['Фиолетовый', '#8f80ff', '#5a49d6', '#5547c9'],
+    teal: ['Бирюзовый', '#5eead4', '#14a38f', '#0f7f70'],
+    coral: ['Коралловый', '#ff9e8a', '#e5574a', '#b8403a'],
+    green: ['Зелёный', '#9be26f', '#4aa83a', '#35832a'],
+    blue: ['Синий', '#7fb8ff', '#3a78e0', '#2c5fb8'],
+    graphite: ['Графитовый', '#9aa3ad', '#555d66', '#3f464d'],
+  };
+  const EYE_COLORS = {
+    amber: ['Янтарные', '#ffe29a', '#ffb02e', '#ffb84d'],
+    cyan: ['Голубые', '#b8f3ff', '#2ec8ff', '#2ec8ff'],
+    green: ['Зелёные', '#d1ffc2', '#5ee06a', '#5ee06a'],
+    pink: ['Розовые', '#ffd0e4', '#ff6fa6', '#ff6fa6'],
+    white: ['Белые', '#ffffff', '#d6dde5', '#e8edf2'],
+  };
+  const EYE_SHAPES = {
+    rect: ['Прямоугольные', 30, 46, 10],
+    round: ['Круглые', 36, 36, 18],
+    narrow: ['Узкие', 18, 52, 9],
+  };
+
+  function applyLook(cfg) {
+    const body = BODY_COLORS[cfg.bodyColor] || BODY_COLORS.violet;
+    const eye = EYE_COLORS[cfg.eyeColor] || EYE_COLORS.amber;
+    const shape = EYE_SHAPES[cfg.eyeShape] || EYE_SHAPES.rect;
+    const st = robot.style;
+    st.setProperty('--shell-top', body[1]);
+    st.setProperty('--shell-bot', body[2]);
+    st.setProperty('--shell-dark', body[3]);
+    st.setProperty('--eye-top', eye[1]);
+    st.setProperty('--eye-bot', eye[2]);
+    st.setProperty('--eye', eye[3]);
+    const [, w, h, rx] = shape;
+    for (const [sel, cx] of [['.eye-l', 91], ['.eye-r', 149]]) {
+      const [main, shine] = robot.querySelectorAll(`${sel} rect`);
+      main.setAttribute('x', cx - w / 2);
+      main.setAttribute('y', 123 - h / 2);
+      main.setAttribute('width', w);
+      main.setAttribute('height', h);
+      main.setAttribute('rx', rx);
+      shine.setAttribute('x', cx - w / 2 + Math.min(6, w / 4));
+      shine.setAttribute('y', 123 - h / 2 + 5);
+    }
+  }
+
+  function swatchRow(title, map, key, current, colored) {
+    const row = el('div', { class: 'swatches' });
+    for (const [id, info] of Object.entries(map)) {
+      const b = el('button', {
+        class: `sw${id === current ? ' on' : ''}`,
+        title: info[0],
+        text: colored ? '' : info[0],
+        onclick: () => api.act('settings:set', { [key]: id }),
+      });
+      if (colored) b.style.background = `linear-gradient(${info[1]}, ${info[2]})`;
+      row.append(b);
+    }
+    return [el('div', { class: 'look-row' }, [el('span', { class: 'dim', text: title }), row])];
+  }
+
   function renderSettings(cfg) {
     const nodes = [];
+    nodes.push(...swatchRow('Цвет корпуса', BODY_COLORS, 'bodyColor', cfg.bodyColor, true));
+    nodes.push(...swatchRow('Цвет глаз', EYE_COLORS, 'eyeColor', cfg.eyeColor, true));
+    nodes.push(...swatchRow('Форма глаз', EYE_SHAPES, 'eyeShape', cfg.eyeShape, false));
     for (const [key, label] of SETTING_FIELDS) {
       const inp = el('input', { type: 'number', min: key === 'panelAutoCloseSec' ? '0' : '1', max: key === 'volume' ? '100' : '600' });
       inp.value = cfg[key];
@@ -541,10 +604,17 @@
   }
   $('#ex-cancel').addEventListener('click', () => api.act('exercise:cancel'));
 
+  let appliedLook = '';
+
   function onState(s) {
     const prevMood = state ? state.mood : null;
     state = s;
     Sound.setConfig(s.settings);
+    const lookKey = `${s.settings.bodyColor}|${s.settings.eyeColor}|${s.settings.eyeShape}`;
+    if (lookKey !== appliedLook) {
+      appliedLook = lookKey;
+      applyLook(s.settings);
+    }
     if (prevMood && prevMood !== s.mood) moodSound(prevMood, s.mood);
     renderExercise(s.exercise);
     applyMood();

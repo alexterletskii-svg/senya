@@ -6,23 +6,23 @@ window.ROBOT_SVG = `
 <svg id="robot" class="mood-energetic" viewBox="0 0 240 240" xmlns="http://www.w3.org/2000/svg" aria-label="Сеня">
   <defs>
     <linearGradient id="shell" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#8f80ff"/>
-      <stop offset="1" stop-color="#5a49d6"/>
+      <stop offset="0" style="stop-color:var(--shell-top)"/>
+      <stop offset="1" style="stop-color:var(--shell-bot)"/>
     </linearGradient>
     <linearGradient id="eyeglow" x1="0" y1="0" x2="0" y2="1">
-      <stop offset="0" stop-color="#ffe29a"/>
-      <stop offset="1" stop-color="#ffb02e"/>
+      <stop offset="0" style="stop-color:var(--eye-top)"/>
+      <stop offset="1" style="stop-color:var(--eye-bot)"/>
     </linearGradient>
     <clipPath id="screenclip"><rect x="48" y="84" width="144" height="92" rx="32"/></clipPath>
   </defs>
 
   <g class="hop"><g class="bot"><g class="head">
-    <g class="fin fin-l"><ellipse cx="26" cy="132" rx="11" ry="21" fill="#5547c9"/><rect x="16" y="124" width="8" height="5" rx="2.5" fill="#ffb84d" opacity=".9"/></g>
-    <g class="fin fin-r"><ellipse cx="214" cy="132" rx="11" ry="21" fill="#5547c9"/><rect x="216" y="124" width="8" height="5" rx="2.5" fill="#ffb84d" opacity=".9"/></g>
+    <g class="fin fin-l"><ellipse cx="26" cy="132" rx="11" ry="21" style="fill:var(--shell-dark)"/><rect x="16" y="124" width="8" height="5" rx="2.5" style="fill:var(--eye)" opacity=".9"/></g>
+    <g class="fin fin-r"><ellipse cx="214" cy="132" rx="11" ry="21" style="fill:var(--shell-dark)"/><rect x="216" y="124" width="8" height="5" rx="2.5" style="fill:var(--eye)" opacity=".9"/></g>
 
     <g class="antenna">
-      <line x1="120" y1="72" x2="120" y2="56" stroke="#5547c9" stroke-width="4" stroke-linecap="round"/>
-      <circle class="bulb" cx="120" cy="49" r="7" fill="#ffb84d" stroke="#5547c9" stroke-width="2"/>
+      <line x1="120" y1="72" x2="120" y2="56" style="stroke:var(--shell-dark)" stroke-width="4" stroke-linecap="round"/>
+      <circle class="bulb" cx="120" cy="49" r="7" style="fill:var(--eye);stroke:var(--shell-dark)" stroke-width="2"/>
     </g>
 
     <rect x="34" y="68" width="172" height="124" rx="46" fill="url(#shell)"/>
@@ -30,7 +30,7 @@ window.ROBOT_SVG = `
     <rect class="screen" x="48" y="84" width="144" height="92" rx="32" fill="#0a0f14"/>
 
     <g clip-path="url(#screenclip)">
-      <rect class="scan" x="48" y="84" width="144" height="7" fill="#ffb84d" opacity=".16"/>
+      <rect class="scan" x="48" y="84" width="144" height="7" style="fill:var(--eye)" opacity=".16"/>
       <path class="tear" d="M80 140 q-6 10 0 14 q6 -4 0 -14z" fill="#6ad7ff"/>
     </g>
 
@@ -42,10 +42,10 @@ window.ROBOT_SVG = `
       <g class="lids" fill="#0a0f14">
         <polygon points="70,94 100,94 70,128"/><polygon points="170,94 140,94 170,128"/>
       </g>
-      <g class="eyes eyes-happy" fill="none" stroke="#ffb84d" stroke-width="9" stroke-linecap="round">
+      <g class="eyes eyes-happy" fill="none" style="stroke:var(--eye)" stroke-width="9" stroke-linecap="round">
         <path d="M75 140 Q91 106 107 140"/><path d="M133 140 Q149 106 165 140"/>
       </g>
-      <g class="eyes eyes-closed" fill="none" stroke="#ffb84d" stroke-width="6" stroke-linecap="round" opacity=".55">
+      <g class="eyes eyes-closed" fill="none" style="stroke:var(--eye)" stroke-width="6" stroke-linecap="round" opacity=".55">
         <path d="M76 128 H106"/><path d="M134 128 H164"/>
       </g>
       <g class="eyes eyes-love">

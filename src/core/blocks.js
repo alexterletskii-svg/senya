@@ -38,10 +38,10 @@ const options = (map) => Object.entries(map).map(([value, label]) => ({ value, l
 
 const CATALOG = {
   events: {
-    start: { label: 'Когда Сеня запустился', params: [] },
-    click: { label: 'Когда меня тыкнули', params: [] },
-    pet: { label: 'Когда меня погладили', params: [] },
-    break: { label: 'Когда пора на перерыв', params: [] },
+    start: { label: 'Когда Сеня запустился', params: [], simple: true },
+    click: { label: 'Когда меня тыкнули', params: [], simple: true },
+    pet: { label: 'Когда меня погладили', params: [], simple: true },
+    break: { label: 'Когда пора на перерыв', params: [], simple: true },
     pomoStart: { label: 'Когда начался Pomodoro', params: [] },
     pomoEnd: { label: 'Когда закончился Pomodoro', params: [] },
     taskDone: { label: 'Когда дело выполнено', params: [] },
@@ -60,14 +60,17 @@ const CATALOG = {
   actions: {
     say: {
       label: 'Сказать',
+      simple: true,
       params: [{ key: 'text', kind: 'text', max: 120, def: 'Привет!' }],
     },
     emotion: {
       label: 'Показать эмоцию',
+      simple: true,
       params: [{ key: 'mood', kind: 'select', options: options(MOODS), def: 'happy' }],
     },
     sound: {
       label: 'Издать звук',
+      simple: true,
       params: [{ key: 'name', kind: 'select', options: options(SOUNDS), def: 'happy' }],
     },
     sayRandom: {
@@ -102,6 +105,7 @@ const CATALOG = {
     },
     wait: {
       label: 'Подождать',
+      simple: true,
       params: [{ key: 'sec', kind: 'number', min: 1, max: 30, def: 2, suffix: 'сек' }],
     },
     repeat: {
@@ -277,6 +281,121 @@ function containsType(blocks, type) {
   return blocks.some((b) => b.type === type || containsType(b.children || [], type));
 }
 
+const FORMAT = 'senya-program';
+const MAX_IMPORT_BYTES = 100000;
+
+function freshId() {
+  return Math.random().toString(36).slice(2, 9);
+}
+
+function reid(program) {
+  const walk = (blocks) => blocks.map((b) => ({ ...b, id: freshId(), ...(b.children ? { children: walk(b.children) } : {}) }));
+  return { rules: program.rules.map((r) => ({ ...r, id: freshId(), body: walk(r.body) })) };
+}
+
+function serialize(program, name = '') {
+  return JSON.stringify({ format: FORMAT, version: 1, name: String(name).slice(0, 60), program: sanitize(program) }, null, 2);
+}
+
+function parseImport(text) {
+  if (typeof text !== 'string' || !text.trim()) return { ok: false, error: 'Файл пустой.' };
+  if (text.length > MAX_IMPORT_BYTES) return { ok: false, error: 'Файл слишком большой для программы Сени.' };
+  let data;
+  try {
+    data = JSON.parse(text);
+  } catch {
+    return { ok: false, error: 'Это не файл программы: не удалось его прочитать.' };
+  }
+  if (!data || data.format !== FORMAT || !data.program || !Array.isArray(data.program.rules)) {
+    return { ok: false, error: 'Это не файл программы Сени.' };
+  }
+  const program = reid(sanitize(data.program));
+  return { ok: true, name: String(data.name || '').slice(0, 60), program, problems: validate(program) };
+}
+
+const EXAMPLE_DEFS = [
+  {
+    id: 'hello',
+    name: 'Привет',
+    simple: true,
+    text: 'Сеня радуется, когда его тыкнули.',
+    rules: [
+      { event: { type: 'click', params: {} }, body: [
+        { type: 'say', params: { text: 'Привет! Я Сеня.' } },
+        { type: 'emotion', params: { mood: 'happy' } },
+        { type: 'sound', params: { name: 'happy' } },
+      ] },
+    ],
+  },
+  {
+    id: 'cuddle',
+    name: 'Любимка',
+    simple: true,
+    text: 'Когда гладишь, Сеня влюбляется.',
+    rules: [
+      { event: { type: 'pet', params: {} }, body: [
+        { type: 'emotion', params: { mood: 'love' } },
+        { type: 'sound', params: { name: 'love' } },
+        { type: 'say', params: { text: 'Мне так приятно!' } },
+      ] },
+    ],
+  },
+  {
+    id: 'counter',
+    name: 'Счётчик тыков',
+    simple: false,
+    text: 'Считает тыки и радуется после пятого.',
+    rules: [
+      { event: { type: 'click', params: {} }, body: [
+        { type: 'changeVar', params: { name: 'тыки', by: 1 } },
+        { type: 'say', params: { text: 'Тыков: {тыки}' } },
+        { type: 'ifVar', params: { name: 'тыки', op: 'gt', value: 4 }, children: [
+          { type: 'emotion', params: { mood: 'love' } },
+          { type: 'sound', params: { name: 'done' } },
+          { type: 'setVar', params: { name: 'тыки', value: 0 } },
+        ] },
+      ] },
+    ],
+  },
+  {
+    id: 'cheer',
+    name: 'Подбадривалка',
+    simple: false,
+    text: 'Во время Pomodoro время от времени поддерживает.',
+    rules: [
+      { event: { type: 'every', params: { min: 10 } }, body: [
+        { type: 'if', params: { cond: 'pomodoro' }, children: [
+          { type: 'sayRandom', params: { text: 'Держись!; Ты молодец!; Ещё немного!' } },
+          { type: 'sound', params: { name: 'work' } },
+        ] },
+      ] },
+    ],
+  },
+  {
+    id: 'alarm',
+    name: 'Утренний будильник',
+    simple: false,
+    text: 'В 09:00 здоровается и просит назвать главное дело.',
+    rules: [
+      { event: { type: 'time', params: { at: '09:00' } }, body: [
+        { type: 'sound', params: { name: 'wake' } },
+        { type: 'say', params: { text: 'Доброе утро! Какое главное дело сегодня?' } },
+        { type: 'emotion', params: { mood: 'energetic' } },
+      ] },
+    ],
+  },
+];
+
+function examples() {
+  return EXAMPLE_DEFS.map((d) => ({
+    id: d.id,
+    name: d.name,
+    simple: d.simple,
+    text: d.text,
+    program: reid(sanitize({ rules: d.rules.map((r) => ({ ...r, id: 'x' })) })),
+  }));
+}
+
 class Cancelled extends Error {}
 
 const MAX_TASKS_PER_RUN = 3;
@@ -430,4 +549,4 @@ class Runtime {
   }
 }
 
-module.exports = { CATALOG, LIMITS, MOODS, SOUNDS, CONDITIONS, sanitize, validate, Runtime };
+module.exports = { serialize, parseImport, examples, FORMAT, CATALOG, LIMITS, MOODS, SOUNDS, CONDITIONS, sanitize, validate, Runtime };

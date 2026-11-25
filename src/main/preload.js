@@ -23,5 +23,8 @@ contextBridge.exposeInMainWorld('senya', {
     run: (ruleId) => ipcRenderer.invoke('program:run', ruleId),
     stop: () => ipcRenderer.invoke('program:stop'),
     explain: (problem) => ipcRenderer.invoke('program:explain', problem),
+    export: (name) => ipcRenderer.invoke('program:export', name),
+    import: (text) => ipcRenderer.invoke('program:import', text),
+    examples: () => ipcRenderer.invoke('program:examples'),
   },
 });
